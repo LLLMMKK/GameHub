@@ -15,10 +15,11 @@ from ui.game_card import generate_default_cover
 class AddGameDialog(QDialog):
     """添加或编辑游戏"""
 
-    def __init__(self, store: GameDataStore, game: Game = None, parent=None):
+    def __init__(self, store: GameDataStore, game: Game = None, default_category: str = "其他", parent=None):
         super().__init__(parent)
         self.store = store
         self.game = game  # 如果为 None 则是添加，否则是编辑
+        self._default_category = default_category
         self._cover_path = ""
         self._setup_ui()
         if game:
@@ -67,7 +68,7 @@ class AddGameDialog(QDialog):
         self.category_combo = QComboBox()
         self.category_combo.setEditable(True)
         self.category_combo.addItems(self.store.categories[3:])  # 跳过"全部"和"最近游玩"
-        self.category_combo.setCurrentText("其他")
+        self.category_combo.setCurrentText(self._default_category)
         form.addRow("分类:", self.category_combo)
 
         # 封面

@@ -2,7 +2,7 @@
 import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QGraphicsDropShadowEffect
+    QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient
@@ -105,6 +105,7 @@ class GameCard(QWidget):
     """游戏卡片 - 封面、名称、时长、播放按钮"""
     play_clicked = pyqtSignal(str)    # game_id
     detail_clicked = pyqtSignal(str)  # game_id
+    delete_clicked = pyqtSignal(str)  # game_id
 
     CARD_WIDTH = 210
     COVER_HEIGHT = 280
@@ -117,6 +118,8 @@ class GameCard(QWidget):
         self.setObjectName("game-card")
         self.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT + 80)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
         self._hover = False
         self._setup_ui()
         self._load_cover()
@@ -303,6 +306,28 @@ class GameCard(QWidget):
 
     def _on_play(self):
         self.play_clicked.emit(self.game.id)
+
+    def _show_context_menu(self, pos):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #1a2535;
+                border: 1px solid #2a4a6a;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: #e8edf3;
+                padding: 6px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #2a4a6a;
+            }
+        """)
+        delete_action = menu.addAction("删除游戏")
+        delete_action.triggered.connect(lambda: self.delete_clicked.emit(self.game.id))
+        menu.exec(self.mapToGlobal(pos))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

@@ -118,6 +118,7 @@ class GameDataStore:
         self.games: list[Game] = []
         self.categories: list[str] = list(DEFAULT_CATEGORIES)
         self.privacy_mode: bool = False
+        self.default_search_engine: str = "baidu"
         self._ensure_data_dir()
         self.load()
 
@@ -131,6 +132,7 @@ class GameDataStore:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     config = json.load(f)
                 self.privacy_mode = config.get("privacy_mode", False)
+                self.default_search_engine = config.get("default_search_engine", "baidu")
             except (json.JSONDecodeError, KeyError):
                 pass
 
@@ -159,7 +161,7 @@ class GameDataStore:
 
     def save_config(self):
         self._ensure_data_dir()
-        config = {"privacy_mode": self.privacy_mode}
+        config = {"privacy_mode": self.privacy_mode, "default_search_engine": self.default_search_engine}
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 

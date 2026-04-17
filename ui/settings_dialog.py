@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFileDialog, QFormLayout, QLineEdit, QCheckBox,
-    QWidget, QScrollArea, QFrame
+    QWidget, QScrollArea, QFrame, QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -16,13 +16,16 @@ class SettingsDialog(QDialog):
 
     privacy_mode_changed = pyqtSignal(bool)  # 隐私模式变更信号
     categories_changed = pyqtSignal()        # 分类变更信号
+    search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
 
     def __init__(self, data_dir: str, privacy_mode: bool = False,
-                 categories: list[str] = None, parent=None):
+                 categories: list[str] = None, default_search_engine: str = "baidu",
+                 parent=None):
         super().__init__(parent)
         self.data_dir = data_dir
         self._privacy_mode = privacy_mode
         self._categories = list(categories) if categories else []
+        self._default_search_engine = default_search_engine
         self._setup_ui()
 
     def _setup_ui(self):
@@ -70,6 +73,18 @@ class SettingsDialog(QDialog):
         privacy_info.setObjectName("detail-info")
         privacy_info.setStyleSheet("color: #4a6080; font-size: 11px;")
         form.addRow("", privacy_info)
+
+        # 默认搜索引擎
+        self.search_engine_combo = QComboBox()
+        self.search_engine_combo.addItem("百度", "baidu")
+        self.search_engine_combo.addItem("Bing", "bing")
+        self.search_engine_combo.addItem("Google", "google")
+        # 设置当前选项（先设索引再连接信号，避免构造时误触发）
+        idx = self.search_engine_combo.findData(self._default_search_engine)
+        if idx >= 0:
+            self.search_engine_combo.setCurrentIndex(idx)
+        self.search_engine_combo.currentIndexChanged.connect(self._on_search_engine_changed)
+        form.addRow("默认搜索引擎:", self.search_engine_combo)
 
         layout.addLayout(form)
 
@@ -216,3 +231,9 @@ class SettingsDialog(QDialog):
     def _on_privacy_toggled(self, checked: bool):
         self._privacy_mode = checked
         self.privacy_mode_changed.emit(checked)
+
+    def _on_search_engine_changed(self, index: int):
+        engine = self.search_engine_combo.itemData(index)
+        if engine:
+            self._default_search_engine = engine
+            self.search_engine_changed.emit(engine)

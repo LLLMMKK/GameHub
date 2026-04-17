@@ -130,6 +130,16 @@ class MainWindow(QMainWindow):
 
         layout.addSpacing(8)
 
+        # 手动选择按钮
+        manual_btn = QPushButton("手动选择")
+        manual_btn.setObjectName("toolbar-btn")
+        manual_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        manual_btn.setToolTip("手动选择多个游戏可执行文件")
+        manual_btn.clicked.connect(self._manual_select)
+        layout.addWidget(manual_btn)
+
+        layout.addSpacing(8)
+
         # 添加游戏按钮
         add_btn = QPushButton("+ 添加游戏")
         add_btn.setObjectName("add-game-btn")
@@ -217,6 +227,7 @@ class MainWindow(QMainWindow):
             card.set_privacy_mode(self.store.privacy_mode)
             card.play_clicked.connect(self._toggle_game)
             card.detail_clicked.connect(self._show_detail)
+            card.delete_clicked.connect(self._delete_game)
             row, col = divmod(i, cols)
             self.card_grid.addWidget(card, row, col)
 
@@ -292,14 +303,15 @@ class MainWindow(QMainWindow):
                     break
 
     def _add_game(self):
-        dialog = AddGameDialog(self.store, parent=self)
+        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        dialog = AddGameDialog(self.store, default_category=cat, parent=self)
         if dialog.exec():
             self._refresh()
 
     def _edit_game(self, game_id: str):
         game = self.store.get_game(game_id)
         if game:
-            dialog = AddGameDialog(self.store, game, self)
+            dialog = AddGameDialog(self.store, game=game, parent=self)
             if dialog.exec():
                 self._refresh()
                 if self._selected_game_id == game_id:
@@ -307,13 +319,22 @@ class MainWindow(QMainWindow):
 
     def _delete_game(self, game_id: str):
         game = self.store.get_game(game_id)
-        if game:
-            if self.launcher.is_running(game_id):
-                self.launcher.terminate(game_id)
-            self.store.remove_game(game_id)
-            if self._selected_game_id == game_id:
-                self._close_detail()
-            self._refresh()
+        if not game:
+            return
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除「{game.name}」吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        if self.launcher.is_running(game_id):
+            self.launcher.terminate(game_id)
+        self.store.remove_game(game_id)
+        if self._selected_game_id == game_id:
+            self._close_detail()
+        self._refresh()
 
     def _scan_directory(self):
         path = QFileDialog.getExistingDirectory(self, "选择游戏目录进行扫描")
@@ -325,7 +346,12 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "扫描结果", "未找到游戏文件")
             return
 
-        # 显示扫描结果，让用户选择
+        # 将扫描到的游戏归入当前分类
+        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        for game in found:
+            game.category = cat
+
+        # 过滤已有游戏
         existing_names = {g.name.lower() for g in self.store.games}
         new_games = [g for g in found if g.name.lower() not in existing_names]
 
@@ -333,17 +359,42 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "扫描结果", "找到的游戏已在列表中")
             return
 
-        msg = f"找到 {len(new_games)} 个新游戏:\n\n"
-        for g in new_games[:15]:
-            msg += f"  • {g.name}\n"
-        if len(new_games) > 15:
-            msg += f"  ... 还有 {len(new_games) - 15} 个\n"
-        msg += f"\n是否全部添加？"
+        # 使用扫描结果对话框，让用户逐条确认
+        from ui.scan_result_dialog import ScanResultDialog
+        dialog = ScanResultDialog(new_games, self)
+        if dialog.exec():
+            for game in dialog.get_selected_games():
+                self.store.add_game(game)
+            self._refresh()
 
-        reply = QMessageBox.question(self, "扫描结果", msg,
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
-            for game in new_games:
+    def _manual_select(self):
+        """手动选择多个 exe 文件添加为游戏"""
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "选择游戏可执行文件", "",
+            "可执行文件 (*.exe);;所有文件 (*.*)"
+        )
+        if not files:
+            return
+
+        from utils.file_utils import get_exe_name
+        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        existing_names = {g.name.lower() for g in self.store.games}
+        new_games = []
+        for path in files:
+            name = get_exe_name(path)
+            if name.lower() not in existing_names:
+                game = Game(name=name, exe_path=path, category=cat)
+                new_games.append(game)
+                existing_names.add(name.lower())
+
+        if not new_games:
+            QMessageBox.information(self, "提示", "选择的游戏已在列表中")
+            return
+
+        from ui.scan_result_dialog import ScanResultDialog
+        dialog = ScanResultDialog(new_games, self)
+        if dialog.exec():
+            for game in dialog.get_selected_games():
                 self.store.add_game(game)
             self._refresh()
 
@@ -371,12 +422,18 @@ class MainWindow(QMainWindow):
         if self.detail_page.game and self.detail_page.isVisible():
             self.detail_page.set_game(self.detail_page.game, self._selected_game_id and self.launcher.is_running(self._selected_game_id))
 
+    def _on_search_engine_changed(self, engine: str):
+        """更新默认搜索引擎"""
+        self.store.default_search_engine = engine
+        self.store.save_config()
+
     def _show_settings(self):
         dialog = SettingsDialog(
             self.store.data_dir, self.store.privacy_mode,
-            self.store.categories, self
+            self.store.categories, self.store.default_search_engine, self
         )
         dialog.privacy_mode_changed.connect(self._toggle_privacy)
+        dialog.search_engine_changed.connect(self._on_search_engine_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._refresh)
         dialog.exec()

@@ -405,6 +405,22 @@ class GameDetailPage(QWidget):
         if self.game:
             self._open_search("steam")
 
+    # 搜索引擎 URL 映射
+    SEARCH_ENGINES = {
+        "baidu": {
+            "image": "https://image.baidu.com/search/index?tn=baiduimage&word={query}",
+            "info": "https://www.baidu.com/s?wd={query}",
+        },
+        "bing": {
+            "image": "https://www.bing.com/images/search?q={query}",
+            "info": "https://www.bing.com/search?q={query}",
+        },
+        "google": {
+            "image": "https://www.google.com/search?tbm=isch&q={query}",
+            "info": "https://www.google.com/search?q={query}",
+        },
+    }
+
     def _open_search(self, tab: str = "image"):
         if not self.game:
             return
@@ -415,18 +431,23 @@ class GameDetailPage(QWidget):
         parent = self.window()
         data_dir = ""
         game_id = self.game.id
+        engine = "baidu"
         if hasattr(parent, 'store'):
             data_dir = parent.store.data_dir
+            engine = parent.store.default_search_engine
         if not data_dir:
             return
 
         name = self.game.name
+        engine_urls = self.SEARCH_ENGINES.get(engine, self.SEARCH_ENGINES["baidu"])
 
         # 先在浏览器中打开对应搜索
         if tab == "image":
-            webbrowser.open(f"https://image.baidu.com/search/index?tn=baiduimage&word={quote(name + ' 游戏封面')}")
+            url = engine_urls["image"].format(query=quote(name + ' 游戏封面'))
+            webbrowser.open(url)
         elif tab == "info":
-            webbrowser.open(f"https://www.baidu.com/s?wd={quote(name + ' 游戏 介绍')}")
+            url = engine_urls["info"].format(query=quote(name + ' 游戏 介绍'))
+            webbrowser.open(url)
         elif tab == "steam":
             webbrowser.open(f"https://store.steampowered.com/search/?term={quote(name)}")
 

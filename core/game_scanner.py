@@ -7,7 +7,7 @@ from utils.file_utils import get_exe_name, is_valid_exe
 class GameScanner:
     """扫描本地目录查找游戏可执行文件"""
 
-    # 常见非游戏 exe 排除列表
+    # 常见非游戏 exe 排除列表（模糊匹配，去掉分隔符后包含即排除）
     EXCLUDE_PATTERNS = {
         # 安装/卸载/补丁
         "uninstall", "setup", "install", "crash", "report",
@@ -36,12 +36,27 @@ class GameScanner:
         "notepad", "editor", "viewer", "converter",
         "log", "debug", "test", "benchmark",
         "proxy", "tunnel", "validator",
+        # 激活/注册/验证
+        "activate", "activation", "validate", "reg", "register",
+        # 版本检查/更新器
+        "vercheck", "checkupdate", "version",
+        # 加载器/注入器
+        "loader", "injector",
+        # 运行时
+        "runtime",
     }
 
     # 排除的文件名（精确匹配，不区分大小写）
     EXCLUDE_EXACT = {
         "launcher.exe", "config.exe", "settings.exe",
-        "unityplayer.dll",  # 非 exe 但相关
+        "registration.exe", "activate.exe", "validate.exe",
+        "update.exe", "updater.exe", "patcher.exe",
+    }
+
+    # 同名目录启发豁免 — 如果 exe 文件名与所在目录名相同，即使匹配了 EXCLUDE_PATTERNS 也不排除
+    # 因为 Game/Game.exe 这种结构大概率是游戏主程序
+    SAME_NAME_EXEMPT_PATTERNS = {
+        "game", "app", "play", "run", "start", "launch",
     }
 
     def scan_directory(self, directory: str) -> list[Game]:
@@ -57,18 +72,25 @@ class GameScanner:
                 for filename in files:
                     if not filename.lower().endswith(".exe"):
                         continue
-                    if self._should_skip_file(filename):
-                        continue
 
                     exe_path = os.path.join(root, filename)
 
-                    # 过小的 exe 很可能不是游戏（工具/辅助程序通常很小）
+                    # 过小的 exe 很可能不是游戏（辅助程序通常很小）
                     try:
                         fsize = os.path.getsize(exe_path)
-                        if fsize < 512 * 1024:  # 小于 512KB 跳过
+                        if fsize < 100 * 1024:  # 小于 100KB 跳过
                             continue
                     except OSError:
                         continue
+
+                    # 同名目录启发：如果 exe 文件名与所在目录名相同，更可能是游戏主程序
+                    dir_name = os.path.basename(root)
+                    stem = os.path.splitext(filename)[0]
+                    same_name = stem.lower() == dir_name.lower()
+
+                    if self._should_skip_file(filename, same_name_hint=same_name):
+                        continue
+
                     name = get_exe_name(exe_path)
 
                     # 去重
@@ -87,12 +109,24 @@ class GameScanner:
 
         return games
 
-    def _should_skip_file(self, filename: str) -> bool:
+    def _should_skip_file(self, filename: str, same_name_hint: bool = False) -> bool:
         # 精确匹配
         if filename.lower() in self.EXCLUDE_EXACT:
+            # 同名目录启发豁免：如 Game/Game.exe 不应被排除
+            if same_name_hint:
+                stem = os.path.splitext(filename)[0].lower()
+                if stem in self.SAME_NAME_EXEMPT_PATTERNS:
+                    return False
             return True
         # 模糊匹配（去掉分隔符后包含关键词）
         name_lower = filename.lower().replace(".", "").replace("_", "").replace("-", "")
+
+        # 同名目录启发：如果 exe 与目录同名，对常见游戏关键词放宽过滤
+        if same_name_hint:
+            stem = os.path.splitext(filename)[0].lower()
+            if stem in self.SAME_NAME_EXEMPT_PATTERNS:
+                return False
+
         return any(p in name_lower for p in self.EXCLUDE_PATTERNS)
 
     def _should_skip_dir(self, dirname: str) -> bool:
@@ -102,8 +136,7 @@ class GameScanner:
             "vcredist", "dxredist", "physx", "vcpp",
             # 引擎内部目录
             "engine", "unity", "unreal", "cryengine",
-            # 工具/开发
-            "tools", "tool", "bin", "utils", "utility",
+            # 开发/调试
             "sdk", "dev", "debug", "build",
             # 插件/模块
             "plugins", "plugin", "mods", "patch",
@@ -114,14 +147,13 @@ class GameScanner:
             "easyanticheat", "eac", "battleye",
             # 框架/库
             "lib", "libs", "library", "libraries",
-            "frameworks", "runtime", "runtimes",
+            "frameworks", "runtimes",
             "dependencies", "deps",
-            # 其他非游戏
+            # 文档/本地化
             "docs", "doc", "documentation",
             "locales", "lang", "languages",
-            "fonts", "icons", "textures", "shaders",
-            "audio", "video", "music", "sound",
-            "data", "assets", "resource", "resources",
+            "fonts", "icons", "shaders",
+            # 配置
             "config", "cfg", "conf",
         }
         dl = dirname.lower()
