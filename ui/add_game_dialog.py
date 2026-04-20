@@ -51,7 +51,7 @@ class AddGameDialog(QDialog):
         # 可执行文件
         exe_row = QHBoxLayout()
         self.exe_input = QLineEdit()
-        self.exe_input.setPlaceholderText("选择游戏可执行文件 (.exe)")
+        self.exe_input.setPlaceholderText("选择游戏可执行文件 (.exe/.bat/.cmd)")
         exe_btn = QPushButton("浏览...")
         exe_btn.setObjectName("file-btn")
         exe_btn.clicked.connect(self._browse_exe)
@@ -134,9 +134,14 @@ class AddGameDialog(QDialog):
         self._update_cover_preview()
 
     def _browse_exe(self):
+        start_dir = ""
+        if self.game and self.game.exe_path:
+            start_dir = os.path.dirname(self.game.exe_path)
+        if not start_dir:
+            start_dir = self.store.default_game_dir or ""
         path, _ = QFileDialog.getOpenFileName(
-            self, "选择游戏可执行文件", "",
-            "可执行文件 (*.exe);;所有文件 (*.*)"
+            self, "选择游戏可执行文件", start_dir,
+            "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
         )
         if path:
             self.exe_input.setText(path)

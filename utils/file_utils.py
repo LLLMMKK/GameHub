@@ -20,7 +20,7 @@ def get_exe_name(path: str) -> str:
 
 
 def is_valid_exe(path: str) -> bool:
-    return os.path.isfile(path) and path.lower().endswith(".exe")
+    return os.path.isfile(path) and path.lower().endswith((".exe", ".bat", ".cmd"))
 
 
 def find_exes_in_dir(directory: str) -> list[str]:

@@ -17,15 +17,17 @@ class SettingsDialog(QDialog):
     privacy_mode_changed = pyqtSignal(bool)  # 隐私模式变更信号
     categories_changed = pyqtSignal()        # 分类变更信号
     search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
+    game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
 
     def __init__(self, data_dir: str, privacy_mode: bool = False,
                  categories: list[str] = None, default_search_engine: str = "baidu",
-                 parent=None):
+                 default_game_dir: str = "", parent=None):
         super().__init__(parent)
         self.data_dir = data_dir
         self._privacy_mode = privacy_mode
         self._categories = list(categories) if categories else []
         self._default_search_engine = default_search_engine
+        self._default_game_dir = default_game_dir
         self._setup_ui()
 
     def _setup_ui(self):
@@ -85,6 +87,22 @@ class SettingsDialog(QDialog):
             self.search_engine_combo.setCurrentIndex(idx)
         self.search_engine_combo.currentIndexChanged.connect(self._on_search_engine_changed)
         form.addRow("默认搜索引擎:", self.search_engine_combo)
+
+        # 默认游戏库目录
+        game_dir_row = QHBoxLayout()
+        self.game_dir_input = QLineEdit(self._default_game_dir)
+        self.game_dir_input.setPlaceholderText("未设置")
+        game_dir_btn = QPushButton("浏览")
+        game_dir_btn.setObjectName("file-btn")
+        game_dir_btn.clicked.connect(self._change_game_dir)
+        game_dir_row.addWidget(self.game_dir_input, 1)
+        game_dir_row.addWidget(game_dir_btn)
+        form.addRow("默认游戏库:", game_dir_row)
+
+        game_dir_info = QLabel("选择文件或扫描目录时的默认起始路径")
+        game_dir_info.setObjectName("detail-info")
+        game_dir_info.setStyleSheet("color: #4a6080; font-size: 11px;")
+        form.addRow("", game_dir_info)
 
         layout.addLayout(form)
 
@@ -237,3 +255,11 @@ class SettingsDialog(QDialog):
         if engine:
             self._default_search_engine = engine
             self.search_engine_changed.emit(engine)
+
+    def _change_game_dir(self):
+        start = self.game_dir_input.text() or ""
+        path = QFileDialog.getExistingDirectory(self, "选择默认游戏库目录", start)
+        if path:
+            self.game_dir_input.setText(path)
+            self._default_game_dir = path
+            self.game_dir_changed.emit(path)

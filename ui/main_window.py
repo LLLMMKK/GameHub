@@ -337,7 +337,8 @@ class MainWindow(QMainWindow):
         self._refresh()
 
     def _scan_directory(self):
-        path = QFileDialog.getExistingDirectory(self, "选择游戏目录进行扫描")
+        start_dir = self.store.default_game_dir or ""
+        path = QFileDialog.getExistingDirectory(self, "选择游戏目录进行扫描", start_dir)
         if not path:
             return
 
@@ -368,35 +369,52 @@ class MainWindow(QMainWindow):
             self._refresh()
 
     def _manual_select(self):
-        """手动选择多个 exe 文件添加为游戏"""
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "选择游戏可执行文件", "",
-            "可执行文件 (*.exe);;所有文件 (*.*)"
-        )
-        if not files:
-            return
-
+        """手动选择可执行文件添加为游戏，支持跨目录多次选择"""
         from utils.file_utils import get_exe_name
+        from ui.scan_result_dialog import ScanResultDialog
         cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
         existing_names = {g.name.lower() for g in self.store.games}
-        new_games = []
-        for path in files:
-            name = get_exe_name(path)
-            if name.lower() not in existing_names:
-                game = Game(name=name, exe_path=path, category=cat)
-                new_games.append(game)
-                existing_names.add(name.lower())
+        all_new_games = []
+        seen_paths = set()
 
-        if not new_games:
-            QMessageBox.information(self, "提示", "选择的游戏已在列表中")
-            return
+        while True:
+            start_dir = self.store.default_game_dir or ""
+            files, _ = QFileDialog.getOpenFileNames(
+                self, "选择游戏可执行文件", start_dir,
+                "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
+            )
+            if not files and not all_new_games:
+                return
+            if not files:
+                # 没选新文件但有已累积的，直接确认
+                break
 
-        from ui.scan_result_dialog import ScanResultDialog
-        dialog = ScanResultDialog(new_games, self)
-        if dialog.exec():
-            for game in dialog.get_selected_games():
-                self.store.add_game(game)
-            self._refresh()
+            for path in files:
+                if path in seen_paths:
+                    continue
+                seen_paths.add(path)
+                name = get_exe_name(path)
+                if name.lower() not in existing_names:
+                    game = Game(name=name, exe_path=path, category=cat)
+                    all_new_games.append(game)
+                    existing_names.add(name.lower())
+
+            if not all_new_games:
+                QMessageBox.information(self, "提示", "选择的游戏已在列表中")
+                return
+
+            dialog = ScanResultDialog(all_new_games, self, allow_add_more=True)
+            result = dialog.exec()
+            all_new_games = dialog.get_selected_games()
+            if result == ScanResultDialog.ADD_MORE_RESULT:
+                continue
+            elif result == QDialog.DialogCode.Accepted:
+                for game in all_new_games:
+                    self.store.add_game(game)
+                self._refresh()
+                return
+            else:
+                return
 
     def _on_cover_changed(self, path: str):
         if self.detail_page.game:
@@ -427,13 +445,20 @@ class MainWindow(QMainWindow):
         self.store.default_search_engine = engine
         self.store.save_config()
 
+    def _on_game_dir_changed(self, path: str):
+        """更新默认游戏库目录"""
+        self.store.default_game_dir = path
+        self.store.save_config()
+
     def _show_settings(self):
         dialog = SettingsDialog(
             self.store.data_dir, self.store.privacy_mode,
-            self.store.categories, self.store.default_search_engine, self
+            self.store.categories, self.store.default_search_engine,
+            self.store.default_game_dir, self
         )
         dialog.privacy_mode_changed.connect(self._toggle_privacy)
         dialog.search_engine_changed.connect(self._on_search_engine_changed)
+        dialog.game_dir_changed.connect(self._on_game_dir_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._refresh)
         dialog.exec()

@@ -11,9 +11,13 @@ from core.game_model import Game
 class ScanResultDialog(QDialog):
     """扫描结果对话框"""
 
-    def __init__(self, games: list[Game], parent=None):
+    # 自定义返回码：用户点了"继续添加"
+    ADD_MORE_RESULT = 10
+
+    def __init__(self, games: list[Game], parent=None, allow_add_more: bool = False):
         super().__init__(parent)
-        self._games = list(games)  # 可变列表，移除后仍保留的
+        self._games = list(games)
+        self._allow_add_more = allow_add_more
         self._setup_ui()
 
     def _setup_ui(self):
@@ -66,6 +70,14 @@ class ScanResultDialog(QDialog):
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
+
+        if self._allow_add_more:
+            more_btn = QPushButton("继续添加")
+            more_btn.setObjectName("toolbar-btn")
+            more_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            more_btn.setToolTip("从其他目录继续选择文件")
+            more_btn.clicked.connect(self._on_add_more)
+            btn_row.addWidget(more_btn)
 
         self._add_btn = QPushButton("全部添加")
         self._add_btn.setObjectName("primary-btn")
@@ -157,6 +169,10 @@ class ScanResultDialog(QDialog):
     def _on_add(self):
         """确认添加"""
         self.accept()
+
+    def _on_add_more(self):
+        """继续添加更多文件"""
+        self.done(self.ADD_MORE_RESULT)
 
     def get_selected_games(self) -> list[Game]:
         """获取用户保留的游戏列表"""
