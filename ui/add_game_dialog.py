@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt
 
 from core.game_model import Game, GameDataStore
 from ui.game_card import generate_default_cover
+from utils.file_utils import get_cover_dir, save_cover
 
 
 class AddGameDialog(QDialog):
@@ -67,7 +68,8 @@ class AddGameDialog(QDialog):
         # 分类
         self.category_combo = QComboBox()
         self.category_combo.setEditable(True)
-        self.category_combo.addItems(self.store.categories[3:])  # 跳过"全部"和"最近游玩"
+        # 跳过"全部"和"最近游玩"——它们不是可选择的分类
+        self.category_combo.addItems([c for c in self.store.categories if c not in ("全部", "最近游玩")])
         self.category_combo.setCurrentText(self._default_category)
         form.addRow("分类:", self.category_combo)
 
@@ -194,10 +196,8 @@ class AddGameDialog(QDialog):
         cover_path = self._cover_path
         if cover_path and self.game:
             # 编辑模式，仅当封面不在数据目录时才复制
-            from utils.file_utils import get_cover_dir
             cover_dir = get_cover_dir(self.store.data_dir)
             if not os.path.abspath(cover_path).startswith(os.path.abspath(cover_dir)):
-                from utils.file_utils import save_cover
                 cover_path = save_cover(cover_path, self.game.id, self.store.data_dir)
         elif cover_path and not self.game:
             # 添加模式，先创建游戏再处理封面
@@ -225,7 +225,6 @@ class AddGameDialog(QDialog):
                 is_r18=self.r18_checkbox.isChecked(),
             )
             if cover_path:
-                from utils.file_utils import save_cover
                 game.cover_path = save_cover(cover_path, game.id, self.store.data_dir)
             self.store.add_game(game)
 
