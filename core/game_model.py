@@ -90,8 +90,9 @@ class Game:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Game":
-        game = cls()
-        game.id = data.get("id", str(uuid.uuid4())[:8])
+        id_ = data.get("id", str(uuid.uuid4())[:8])
+        game = cls.__new__(cls)
+        game.id = id_
         game.name = data.get("name", "")
         game.exe_path = data.get("exe_path", "")
         game.launch_args = data.get("launch_args", "")
@@ -116,6 +117,7 @@ class GameDataStore:
         self.games_file = os.path.join(data_dir, "games.json")
         self.config_file = os.path.join(data_dir, "config.json")
         self.games: list[Game] = []
+        self._games_by_id: dict[str, Game] = {}  # O(1) 查找
         self.categories: list[str] = list(DEFAULT_CATEGORIES)
         self.privacy_mode: bool = False
         self.default_search_engine: str = "baidu"
@@ -144,6 +146,7 @@ class GameDataStore:
                 with open(self.games_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.games = [Game.from_dict(g) for g in data.get("games", [])]
+                self._games_by_id = {g.id: g for g in self.games}
                 custom_cats = data.get("categories", [])
                 for cat in custom_cats:
                     if cat not in self.categories:
@@ -159,7 +162,6 @@ class GameDataStore:
         }
         with open(self.games_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        self.save_config()
 
     def save_config(self):
         self._ensure_data_dir()
@@ -169,6 +171,7 @@ class GameDataStore:
 
     def add_game(self, game: Game) -> Game:
         self.games.append(game)
+        self._games_by_id[game.id] = game
         self.save()
         return game
 
@@ -176,18 +179,17 @@ class GameDataStore:
         for i, g in enumerate(self.games):
             if g.id == game.id:
                 self.games[i] = game
+                self._games_by_id[game.id] = game
                 break
         self.save()
 
     def remove_game(self, game_id: str):
         self.games = [g for g in self.games if g.id != game_id]
+        self._games_by_id.pop(game_id, None)
         self.save()
 
     def get_game(self, game_id: str) -> Optional[Game]:
-        for g in self.games:
-            if g.id == game_id:
-                return g
-        return None
+        return self._games_by_id.get(game_id)
 
     def get_games_by_category(self, category: str) -> list[Game]:
         if category == "全部":
