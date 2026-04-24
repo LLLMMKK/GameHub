@@ -526,6 +526,54 @@ QLabel#section-label {
     padding: 2px 10px;
 }
 
+/* ===== 游戏详情页 ===== */
+
+/* 介绍卡片 */
+#desc-card {
+    background-color: #111820;
+    border: 1px solid #1a2332;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+#desc-title {
+    color: #8fa3b8;
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+    padding-bottom: 10px;
+}
+
+#desc-content {
+    background-color: #0e1621;
+    border: none;
+    color: #b0c4de;
+    font-size: 14px;
+    selection-background-color: #3a7bd5;
+}
+
+/* 信息行 */
+#info-key {
+    color: #4a6080;
+    font-size: 11px;
+    background: transparent;
+}
+
+#info-value {
+    color: #b0c4de;
+    font-size: 13px;
+    background: transparent;
+}
+
+/* 区块标题 */
+#section-header {
+    color: #4a6080;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: transparent;
+}
+
 /* 空状态提示 */
 #empty-hint {
     color: #4a6080;
