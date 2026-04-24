@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QColor, QFont
 
 from core.game_model import Game
-from ui.game_card import generate_default_cover, apply_mosaic, mask_name
+from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap
 
 
 class GameDetailPage(QWidget):
@@ -309,7 +309,7 @@ class GameDetailPage(QWidget):
 
         # 封面
         if game.cover_path and os.path.exists(game.cover_path):
-            pixmap = QPixmap(game.cover_path)
+            pixmap = _load_cover_pixmap(game.cover_path)
             if not pixmap.isNull():
                 # 先 scale 到目标尺寸再 mosaic，效果清晰锐利
                 scaled = pixmap.scaled(320, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,

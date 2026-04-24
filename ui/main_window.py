@@ -185,8 +185,12 @@ class MainWindow(QMainWindow):
         for game in self.store.games:
             counts[game.category] = counts.get(game.category, 0) + 1
 
-        self.sidebar.set_categories(self.store.categories, counts)
-        self.sidebar.update_counts(counts)
+        # 只在分类列表变化时重建按钮，平时仅更新计数
+        current_cats = [b.category_name for b in self.sidebar._buttons]
+        if current_cats != self.store.categories:
+            self.sidebar.set_categories(self.store.categories, counts)
+        else:
+            self.sidebar.update_counts(counts)
 
         # 刷新卡片
         self._refresh_cards()

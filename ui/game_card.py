@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient
 
 from core.game_model import Game
@@ -36,6 +36,12 @@ def apply_mosaic(pixmap: QPixmap, block_size=12) -> QPixmap:
                           Qt.AspectRatioMode.IgnoreAspectRatio,
                           Qt.TransformationMode.FastTransformation)
     return result
+
+
+@lru_cache(maxsize=256)
+def _load_cover_pixmap(path: str) -> QPixmap:
+    """缓存封面文件到 QPixmap，避免重复磁盘读取"""
+    return QPixmap(path)
 
 
 def mask_name(name: str) -> str:
@@ -287,7 +293,7 @@ class GameCard(QWidget):
 
     def _load_cover(self):
         if self.game.cover_path and os.path.exists(self.game.cover_path):
-            pixmap = QPixmap(self.game.cover_path)
+            pixmap = _load_cover_pixmap(self.game.cover_path)
             if not pixmap.isNull():
                 # 隐私模式下 R18 游戏封面打马赛克
                 # 先 scale 到目标尺寸再 mosaic，效果清晰锐利

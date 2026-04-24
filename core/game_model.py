@@ -2,28 +2,13 @@
 import json
 import os
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
 
 # 预设分类
 DEFAULT_CATEGORIES = ["全部", "最近游玩", "动作", "策略", "RPG", "冒险", "模拟", "体育", "竞速", "休闲", "Galgame", "其他"]
-
-
-@dataclass
-class PlayRecord:
-    """单次游玩记录"""
-    start_time: str  # ISO 格式
-    end_time: Optional[str] = None
-
-    @property
-    def duration_seconds(self) -> float:
-        if not self.end_time:
-            return 0.0
-        start = datetime.fromisoformat(self.start_time)
-        end = datetime.fromisoformat(self.end_time)
-        return max(0, (end - start).total_seconds())
 
 
 @dataclass
@@ -47,7 +32,9 @@ class Game:
         record = {"start_time": start_time, "end_time": end_time}
         self.play_records.append(record)
         if end_time:
-            self.total_play_time += PlayRecord(**record).duration_seconds
+            start_dt = datetime.fromisoformat(start_time)
+            end_dt = datetime.fromisoformat(end_time)
+            self.total_play_time += max(0.0, (end_dt - start_dt).total_seconds())
             self.last_played = end_time
 
     def format_play_time(self) -> str:
