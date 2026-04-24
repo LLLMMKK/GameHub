@@ -16,6 +16,29 @@ def copy_file(src: str, dst: str) -> str:
 
 
 def get_exe_name(path: str) -> str:
+    """从 exe 路径推导游戏名称，优先使用父目录名"""
+    stem = Path(path).stem.lower()
+    # 泛用名列表 — 这些 exe 名不像游戏名，应取父目录名
+    generic_names = {
+        "game", "start", "launch", "play", "run", "app",
+        "main", "loader", "client", "application", "与工具一同启动",
+    }
+    if stem not in generic_names:
+        return Path(path).stem
+
+    # exe 名是泛用名，向上查找像游戏名的目录
+    parts = Path(path).parts
+    # 从直接父目录开始，跳过也是泛用名的目录
+    generic_dirs = generic_names | {
+        "bin", "game", "games", "app", "apps",
+        "launcher", "build", "release", "debug",
+        "x64", "x86", "win64", "win32", "windows",
+        "data", "assets", "resource", "resources",
+    }
+    for dir_name in reversed(parts[:-1]):
+        if dir_name.lower() not in generic_dirs:
+            return dir_name
+    # 全部目录名都是泛用的，回退到 exe 名
     return Path(path).stem
 
 

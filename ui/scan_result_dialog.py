@@ -1,4 +1,5 @@
-"""扫描结果对话框 - 展示扫描到的游戏列表，支持逐条移除后批量添加"""
+"""扫描结果对话框 - 展示扫描到的游戏列表，支持逐条移除后批量添加，标记已有游戏"""
+import os
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QScrollArea, QFrame, QWidget
@@ -14,10 +15,13 @@ class ScanResultDialog(QDialog):
     # 自定义返回码：用户点了"继续添加"
     ADD_MORE_RESULT = 10
 
-    def __init__(self, games: list[Game], parent=None, allow_add_more: bool = False):
+    def __init__(self, games: list[Game], parent=None, allow_add_more: bool = False,
+                 existing_paths: set[str] = None, existing_names: set[str] = None):
         super().__init__(parent)
         self._games = list(games)
         self._allow_add_more = allow_add_more
+        self._existing_paths = existing_paths or set()
+        self._existing_names = existing_names or set()
         self._setup_ui()
 
     def _setup_ui(self):
@@ -107,16 +111,22 @@ class ScanResultDialog(QDialog):
 
     def _make_game_row(self, game: Game, index: int) -> QWidget:
         """创建单行游戏条目"""
+        norm_path = os.path.normpath(game.exe_path).lower()
+        path_exists = norm_path in self._existing_paths
+        name_exists = not path_exists and game.name.lower() in self._existing_names
+
         row = QWidget()
-        row.setStyleSheet("""
-            QWidget {
-                background-color: #141c28;
-                border: 1px solid #1e2d3d;
+        border_color = "#5a2a2a" if path_exists else ("#4a3a1a" if name_exists else "#1e2d3d")
+        bg_color = "#1e1418" if path_exists else ("#1a1814" if name_exists else "#141c28")
+        row.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
                 border-radius: 8px;
-            }
-            QWidget:hover {
+            }}
+            QWidget:hover {{
                 border-color: #2a4a6a;
-            }
+            }}
         """)
 
         layout = QHBoxLayout(row)
@@ -124,13 +134,24 @@ class ScanResultDialog(QDialog):
         layout.setSpacing(12)
 
         # 游戏名称
+        name_color = "#606060" if path_exists else ("#c0a060" if name_exists else "#e8edf3")
         name_label = QLabel(game.name)
-        name_label.setStyleSheet("color: #e8edf3; font-size: 14px; font-weight: bold; background: transparent;")
+        name_label.setStyleSheet(f"color: {name_color}; font-size: 14px; font-weight: bold; background: transparent;")
         name_label.setMinimumWidth(120)
         layout.addWidget(name_label)
 
+        # 重复标记
+        if path_exists:
+            dup_label = QLabel("已添加")
+            dup_label.setStyleSheet("color: #a05050; font-size: 10px; background: transparent; border: 1px solid #5a2a2a; border-radius: 3px; padding: 1px 5px;")
+            layout.addWidget(dup_label)
+        elif name_exists:
+            dup_label = QLabel("同名")
+            dup_label.setStyleSheet("color: #a08040; font-size: 10px; background: transparent; border: 1px solid #4a3a1a; border-radius: 3px; padding: 1px 5px;")
+            layout.addWidget(dup_label)
+
         # 目录路径
-        dir_path = "\\".join(game.exe_path.split("\\")[:-1]) if "\\" in game.exe_path else game.exe_path
+        dir_path = os.path.dirname(game.exe_path) or game.exe_path
         path_label = QLabel(dir_path)
         path_label.setStyleSheet("color: #4a6080; font-size: 11px; background: transparent;")
         path_label.setWordWrap(True)
@@ -175,5 +196,6 @@ class ScanResultDialog(QDialog):
         self.done(self.ADD_MORE_RESULT)
 
     def get_selected_games(self) -> list[Game]:
-        """获取用户保留的游戏列表"""
-        return list(self._games)
+        """获取用户保留的游戏列表（排除路径已存在的）"""
+        return [g for g in self._games
+                if os.path.normpath(g.exe_path).lower() not in self._existing_paths]

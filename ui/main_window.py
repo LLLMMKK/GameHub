@@ -352,69 +352,71 @@ class MainWindow(QMainWindow):
         for game in found:
             game.category = cat
 
-        # 过滤已有游戏
+        # 按路径去重，标记已有游戏
+        existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
         existing_names = {g.name.lower() for g in self.store.games}
-        new_games = [g for g in found if g.name.lower() not in existing_names]
 
-        if not new_games:
-            QMessageBox.information(self, "扫描结果", "找到的游戏已在列表中")
-            return
-
-        # 使用扫描结果对话框，让用户逐条确认
+        # 使用扫描结果对话框，让用户逐条确认（包含已有项标记）
         from ui.scan_result_dialog import ScanResultDialog
-        dialog = ScanResultDialog(new_games, self)
+        dialog = ScanResultDialog(found, self, existing_paths=existing_paths, existing_names=existing_names)
         if dialog.exec():
             for game in dialog.get_selected_games():
+                game.category = cat
                 self.store.add_game(game)
             self._refresh()
 
     def _manual_select(self):
         """手动选择可执行文件添加为游戏，支持跨目录多次选择"""
-        from utils.file_utils import get_exe_name
-        from ui.scan_result_dialog import ScanResultDialog
-        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
-        existing_names = {g.name.lower() for g in self.store.games}
-        all_new_games = []
-        seen_paths = set()
+        import traceback
+        try:
+            from utils.file_utils import get_exe_name
+            from ui.scan_result_dialog import ScanResultDialog
+            cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+            existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
+            existing_names = {g.name.lower() for g in self.store.games}
+            all_new_games = []
+            seen_paths = set()
 
-        while True:
-            start_dir = self.store.default_game_dir or ""
-            files, _ = QFileDialog.getOpenFileNames(
-                self, "选择游戏可执行文件", start_dir,
-                "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
-            )
-            if not files and not all_new_games:
-                return
-            if not files:
-                # 没选新文件但有已累积的，直接确认
-                break
+            while True:
+                start_dir = self.store.default_game_dir or ""
+                files, _ = QFileDialog.getOpenFileNames(
+                    self, "选择游戏可执行文件", start_dir,
+                    "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
+                )
+                if not files and not all_new_games:
+                    return
+                if not files:
+                    break
 
-            for path in files:
-                if path in seen_paths:
-                    continue
-                seen_paths.add(path)
-                name = get_exe_name(path)
-                if name.lower() not in existing_names:
+                for path in files:
+                    norm = os.path.normpath(path).lower()
+                    if norm in seen_paths:
+                        continue
+                    seen_paths.add(norm)
+                    name = get_exe_name(path)
                     game = Game(name=name, exe_path=path, category=cat)
                     all_new_games.append(game)
-                    existing_names.add(name.lower())
 
-            if not all_new_games:
-                QMessageBox.information(self, "提示", "选择的游戏已在列表中")
-                return
+                if not all_new_games:
+                    QMessageBox.information(self, "提示", "选择的文件已在列表中")
+                    return
 
-            dialog = ScanResultDialog(all_new_games, self, allow_add_more=True)
-            result = dialog.exec()
-            all_new_games = dialog.get_selected_games()
-            if result == ScanResultDialog.ADD_MORE_RESULT:
-                continue
-            elif result == QDialog.DialogCode.Accepted:
-                for game in all_new_games:
-                    self.store.add_game(game)
-                self._refresh()
-                return
-            else:
-                return
+                dialog = ScanResultDialog(all_new_games, self, allow_add_more=True,
+                                          existing_paths=existing_paths, existing_names=existing_names)
+                result = dialog.exec()
+                all_new_games = dialog.get_selected_games()
+                if result == ScanResultDialog.ADD_MORE_RESULT:
+                    continue
+                elif result == 1:  # QDialog.Accepted
+                    for game in all_new_games:
+                        self.store.add_game(game)
+                    self._refresh()
+                    return
+                else:
+                    return
+        except Exception:
+            traceback.print_exc()
+            QMessageBox.critical(self, "手动选择出错", traceback.format_exc()[:500])
 
     def _on_cover_changed(self, path: str):
         if self.detail_page.game:
