@@ -155,6 +155,16 @@ QMainWindow {
     background-color: #1a2a3e;
 }
 
+#game-card[running="true"] {
+    border-color: #3a8a28;
+    background-color: #142018;
+}
+
+#game-card[running="true"]:hover {
+    border-color: #5cb040;
+    background-color: #1a2c18;
+}
+
 #game-card[selected="true"] {
     border-color: #3a7bd5;
 }

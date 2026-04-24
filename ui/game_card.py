@@ -114,6 +114,7 @@ class GameCard(QWidget):
     """游戏卡片 - 封面、名称、时长、播放按钮"""
     play_clicked = pyqtSignal(str)    # game_id
     detail_clicked = pyqtSignal(str)  # game_id
+    edit_clicked = pyqtSignal(str)    # game_id
     delete_clicked = pyqtSignal(str)  # game_id
 
     CARD_WIDTH = 210
@@ -125,6 +126,7 @@ class GameCard(QWidget):
         self._running = game.is_running
         self._privacy_mode = False
         self.setObjectName("game-card")
+        self.setProperty("running", str(self._running).lower())
         self.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT + 80)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -334,6 +336,9 @@ class GameCard(QWidget):
                 background-color: #2a4a6a;
             }
         """)
+        edit_action = menu.addAction("编辑游戏")
+        edit_action.triggered.connect(lambda: self.edit_clicked.emit(self.game.id))
+        menu.addSeparator()
         delete_action = menu.addAction("删除游戏")
         delete_action.triggered.connect(lambda: self.delete_clicked.emit(self.game.id))
         menu.exec(self.mapToGlobal(pos))
@@ -372,6 +377,11 @@ class GameCard(QWidget):
         text = "■" if is_running else "▶"
         tooltip = "关闭游戏" if is_running else "启动游戏"
         prop = str(is_running).lower()
+
+        # 卡片本身运行状态样式
+        self.setProperty("running", prop)
+        self.style().unpolish(self)
+        self.style().polish(self)
 
         # 大按钮
         self._big_play_btn.setText(text)

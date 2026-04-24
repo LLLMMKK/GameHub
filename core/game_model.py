@@ -171,8 +171,10 @@ class GameDataStore:
         self.save()
 
     def remove_game(self, game_id: str):
+        from utils.file_utils import delete_cover
         self.games = [g for g in self.games if g.id != game_id]
         self._games_by_id.pop(game_id, None)
+        delete_cover(game_id, self.data_dir)
         self.save()
 
     def get_game(self, game_id: str) -> Optional[Game]:

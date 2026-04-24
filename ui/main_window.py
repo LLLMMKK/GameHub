@@ -5,9 +5,10 @@ import traceback
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QScrollArea, QGridLayout,
-    QFrame, QFileDialog, QMessageBox
+    QFrame, QFileDialog, QMessageBox, QComboBox
 )
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QShortcut, QKeySequence
 
 from core.game_model import GameDataStore, Game
 from core.game_launcher import GameLauncher
@@ -38,6 +39,7 @@ class MainWindow(QMainWindow):
         # 当前状态
         self._current_category = "全部"
         self._search_query = ""
+        self._sort_mode = "name"  # name / play_time / last_played / added_time
         self._selected_game_id = None
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
 
@@ -49,6 +51,7 @@ class MainWindow(QMainWindow):
 
         self._setup_ui()
         self._connect_signals()
+        self._setup_shortcuts()
         self._refresh()
 
     def _setup_ui(self):
@@ -125,6 +128,31 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
+        # 排序选择
+        sort_label = QLabel("排序:")
+        sort_label.setStyleSheet("color: #4a6080; font-size: 12px; background: transparent;")
+        layout.addWidget(sort_label)
+
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItems(["名称", "游玩时长", "最近游玩", "添加时间"])
+        self.sort_combo.setCurrentIndex(0)
+        self.sort_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #141c28; border: 1px solid #1e2d3d;
+                border-radius: 6px; padding: 6px 10px; color: #8fa3b8;
+                font-size: 12px; min-width: 90px;
+            }
+            QComboBox:hover { border-color: #3a7bd5; }
+            QComboBox QAbstractItemView {
+                background-color: #141c28; border: 1px solid #1e2d3d;
+                color: #d1d9e6; selection-background-color: #1a2a3e;
+            }
+        """)
+        self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
+        layout.addWidget(self.sort_combo)
+
+        layout.addSpacing(12)
+
         # 扫描按钮
         scan_btn = QPushButton("扫描目录")
         scan_btn.setObjectName("toolbar-btn")
@@ -175,6 +203,23 @@ class MainWindow(QMainWindow):
         self.detail_page.back_clicked.connect(self._close_detail)
         self.detail_page.cover_changed.connect(self._on_cover_changed)
         self.detail_page.desc_changed.connect(self._on_desc_changed)
+
+    def _setup_shortcuts(self):
+        QShortcut(QKeySequence("Ctrl+F"), self, activated=self._shortcut_search)
+        QShortcut(QKeySequence(Qt.Key.Key_Delete), self, activated=self._shortcut_delete)
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self, activated=self._shortcut_escape)
+
+    def _shortcut_search(self):
+        self.sidebar.search_box.setFocus()
+        self.sidebar.search_box.selectAll()
+
+    def _shortcut_delete(self):
+        if self._selected_game_id and self.detail_page.isVisible():
+            self._delete_game(self._selected_game_id)
+
+    def _shortcut_escape(self):
+        if self.detail_page.isVisible():
+            self._close_detail()
 
     def _refresh(self):
         """刷新界面"""
@@ -237,6 +282,7 @@ class MainWindow(QMainWindow):
             card.set_privacy_mode(self.store.privacy_mode)
             card.play_clicked.connect(self._toggle_game)
             card.detail_clicked.connect(self._show_detail)
+            card.edit_clicked.connect(self._edit_game)
             card.delete_clicked.connect(self._delete_game)
             row, col = divmod(i, cols)
             self.card_grid.addWidget(card, row, col)
@@ -244,8 +290,29 @@ class MainWindow(QMainWindow):
 
     def _get_filtered_games(self) -> list[Game]:
         if self._search_query:
-            return self.store.search_games(self._search_query)
-        return self.store.get_games_by_category(self._current_category)
+            games = self.store.search_games(self._search_query)
+        else:
+            games = self.store.get_games_by_category(self._current_category)
+        return self._sort_games(games)
+
+    def _sort_games(self, games: list[Game]) -> list[Game]:
+        key_fn = {
+            "name": lambda g: g.name.lower(),
+            "play_time": lambda g: -g.total_play_time,
+            "last_played": lambda g: g.last_played or "0",
+            "added_time": lambda g: g.added_time,
+        }.get(self._sort_mode)
+        if key_fn:
+            if self._sort_mode == "last_played":
+                games.sort(key=key_fn, reverse=True)
+            else:
+                games.sort(key=key_fn)
+        return games
+
+    def _on_sort_changed(self, index: int):
+        modes = ["name", "play_time", "last_played", "added_time"]
+        self._sort_mode = modes[index]
+        self._refresh_cards()
 
     # --- 事件处理 ---
 
@@ -290,6 +357,7 @@ class MainWindow(QMainWindow):
         if game:
             game.is_running = True
         self._update_card_state(game_id)
+        self._refresh_sidebar_counts()
         if self._selected_game_id == game_id:
             self.detail_page.set_running(True)
 
@@ -299,6 +367,7 @@ class MainWindow(QMainWindow):
         if game:
             game.is_running = False
         self._update_card_state(game_id)
+        self._refresh_sidebar_counts()
         if self._selected_game_id == game_id:
             self.detail_page.set_game(game, False)
 
@@ -308,6 +377,15 @@ class MainWindow(QMainWindow):
             game = self.store.get_game(game_id)
             if game:
                 card.update_game(game)
+
+    def _refresh_sidebar_counts(self):
+        """仅更新侧边栏计数，不重建按钮"""
+        counts = {"全部": len(self.store.games)}
+        recent = [g for g in self.store.games if g.last_played]
+        counts["最近游玩"] = len(recent)
+        for game in self.store.games:
+            counts[game.category] = counts.get(game.category, 0) + 1
+        self.sidebar.update_counts(counts)
 
     def _add_game(self):
         cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"

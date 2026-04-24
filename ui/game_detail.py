@@ -91,7 +91,7 @@ class GameDetailPage(QWidget):
         left.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.cover_label = QLabel()
-        self.cover_label.setFixedSize(320, 420)
+        self.cover_label.setFixedSize(315, 420)
         self.cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.cover_label.setStyleSheet("background-color: #141c28; border-radius: 12px;")
 
@@ -107,7 +107,7 @@ class GameDetailPage(QWidget):
         self.desc_label = QLabel()
         self.desc_label.setStyleSheet("color: #8fa3b8; font-size: 13px; background: transparent; line-height: 1.6;")
         self.desc_label.setWordWrap(True)
-        self.desc_label.setMaximumWidth(320)
+        self.desc_label.setMaximumWidth(315)
         self.desc_label.hide()
         left.addWidget(self.desc_label)
 
@@ -181,6 +181,13 @@ class GameDetailPage(QWidget):
         self.edit_btn.setToolTip("编辑游戏信息")
         self.edit_btn.clicked.connect(lambda: self.edit_clicked.emit(self.game.id if self.game else ""))
         action_layout.addWidget(self.edit_btn)
+
+        self.open_dir_btn = QPushButton("文件位置")
+        self.open_dir_btn.setObjectName("secondary-btn")
+        self.open_dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.open_dir_btn.setToolTip("在资源管理器中打开游戏所在目录")
+        self.open_dir_btn.clicked.connect(self._open_file_location)
+        action_layout.addWidget(self.open_dir_btn)
 
         self.delete_btn = QPushButton("删除游戏")
         self.delete_btn.setObjectName("danger-btn")
@@ -312,7 +319,7 @@ class GameDetailPage(QWidget):
             pixmap = _load_cover_pixmap(game.cover_path)
             if not pixmap.isNull():
                 # 先 scale 到目标尺寸再 mosaic，效果清晰锐利
-                scaled = pixmap.scaled(320, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                scaled = pixmap.scaled(315, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                                        Qt.TransformationMode.SmoothTransformation)
                 if game.is_r18 and privacy:
                     scaled = apply_mosaic(scaled, block_size=13)
@@ -393,6 +400,14 @@ class GameDetailPage(QWidget):
         self._running = running
         self._update_play_button()
 
+    def _open_file_location(self):
+        if self.game and self.game.exe_path and os.path.exists(self.game.exe_path):
+            import subprocess
+            path = os.path.normpath(self.game.exe_path)
+            subprocess.Popen(f'explorer /select,"{path}"')
+        elif self.game and self.game.exe_path:
+            QMessageBox.information(self, "提示", "游戏文件不存在，可能已被移动或删除")
+
     def _search_cover(self):
         if self.game:
             self._open_search("image")
@@ -463,7 +478,7 @@ class GameDetailPage(QWidget):
             # 刷新封面显示
             pixmap = QPixmap(path)
             if not pixmap.isNull():
-                scaled = pixmap.scaled(320, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                scaled = pixmap.scaled(315, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                                        Qt.TransformationMode.SmoothTransformation)
                 self.cover_label.setPixmap(scaled)
 

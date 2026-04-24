@@ -1,4 +1,5 @@
 """文件操作工具"""
+import glob
 import os
 import shutil
 from pathlib import Path
@@ -57,5 +58,15 @@ def save_cover(src_path: str, game_id: str, data_dir: str) -> str:
     ext = os.path.splitext(src_path)[1] or ".png"
     dst = os.path.join(cover_dir, f"{game_id}{ext}")
     return copy_file(src_path, dst)
+
+
+def delete_cover(game_id: str, data_dir: str):
+    """删除游戏的封面文件（支持任意扩展名）"""
+    cover_dir = get_cover_dir(data_dir)
+    for f in glob.glob(os.path.join(cover_dir, f"{game_id}.*")):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
 
 

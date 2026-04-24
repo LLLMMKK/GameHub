@@ -192,30 +192,27 @@ class AddGameDialog(QDialog):
 
         category = self.category_combo.currentText().strip() or "其他"
 
-        # 保存封面
         cover_path = self._cover_path
-        if cover_path and self.game:
-            # 编辑模式，仅当封面不在数据目录时才复制
-            cover_dir = get_cover_dir(self.store.data_dir)
-            if not os.path.abspath(cover_path).startswith(os.path.abspath(cover_dir)):
-                cover_path = save_cover(cover_path, self.game.id, self.store.data_dir)
-        elif cover_path and not self.game:
-            # 添加模式，先创建游戏再处理封面
-            pass
-
         if self.game:
-            # 编辑
+            # 编辑模式
+            old_cover = self.game.cover_path
             self.game.name = name
             self.game.exe_path = exe_path
             self.game.launch_args = self.args_input.text().strip()
             self.game.category = category
-            if cover_path:
-                self.game.cover_path = cover_path
             self.game.description = self.desc_input.toPlainText().strip()
             self.game.is_r18 = self.r18_checkbox.isChecked()
+            # 封面变更：仅当新封面不在数据目录内才复制，同时清理旧封面
+            if cover_path and cover_path != old_cover:
+                from utils.file_utils import get_cover_dir, delete_cover
+                cover_dir = get_cover_dir(self.store.data_dir)
+                if not os.path.abspath(cover_path).startswith(os.path.abspath(cover_dir)):
+                    delete_cover(self.game.id, self.store.data_dir)
+                    cover_path = save_cover(cover_path, self.game.id, self.store.data_dir)
+                self.game.cover_path = cover_path
             self.store.update_game(self.game)
         else:
-            # 添加
+            # 添加模式
             game = Game(
                 name=name,
                 exe_path=exe_path,
