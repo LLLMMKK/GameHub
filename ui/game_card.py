@@ -1,5 +1,7 @@
 """游戏卡片组件 - 精美版"""
 import os
+from functools import lru_cache
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu
@@ -43,6 +45,7 @@ def mask_name(name: str) -> str:
     return name[0] + "***" + name[-1]
 
 
+@lru_cache(maxsize=128)
 def generate_default_cover(name: str, width=260, height=340) -> QPixmap:
     """根据游戏名首字母生成默认封面 - 渐变色+首字母"""
     pixmap = QPixmap(width, height)
@@ -346,7 +349,8 @@ class GameCard(QWidget):
 
     def update_game(self, game: Game):
         self.game = game
-        self.title_label.setText(game.name)
+        display_name = mask_name(game.name) if (game.is_r18 and self._privacy_mode) else game.name
+        self.title_label.setText(display_name)
         self.title_label.setToolTip(game.name)
         self.time_label.setText(game.format_play_time())
         self._running = game.is_running

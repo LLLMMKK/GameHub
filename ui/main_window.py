@@ -1,5 +1,7 @@
 """主窗口 - 整合侧边栏、游戏卡片网格、详情面板"""
 import os
+import traceback
+
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QScrollArea, QGridLayout,
@@ -16,6 +18,8 @@ from ui.game_card import GameCard
 from ui.game_detail import GameDetailPage
 from ui.add_game_dialog import AddGameDialog
 from ui.settings_dialog import SettingsDialog
+from ui.scan_result_dialog import ScanResultDialog
+from utils.file_utils import get_exe_name
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +39,7 @@ class MainWindow(QMainWindow):
         self._current_category = "全部"
         self._search_query = ""
         self._selected_game_id = None
+        self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
 
         # 防抖：resize 时延迟刷新卡片，避免拖动卡顿
         self._resize_timer = QTimer(self)
@@ -189,6 +194,7 @@ class MainWindow(QMainWindow):
     def _refresh_cards(self):
         """刷新游戏卡片"""
         # 清除旧卡片
+        self._cards.clear()
         while self.card_grid.count():
             item = self.card_grid.takeAt(0)
             if item.widget():
@@ -230,6 +236,7 @@ class MainWindow(QMainWindow):
             card.delete_clicked.connect(self._delete_game)
             row, col = divmod(i, cols)
             self.card_grid.addWidget(card, row, col)
+            self._cards[game.id] = card
 
     def _get_filtered_games(self) -> list[Game]:
         if self._search_query:
@@ -292,15 +299,11 @@ class MainWindow(QMainWindow):
             self.detail_page.set_game(game, False)
 
     def _update_card_state(self, game_id: str):
-        for i in range(self.card_grid.count()):
-            item = self.card_grid.itemAt(i)
-            if item and item.widget():
-                card = item.widget()
-                if isinstance(card, GameCard) and card.game.id == game_id:
-                    game = self.store.get_game(game_id)
-                    if game:
-                        card.update_game(game)
-                    break
+        card = self._cards.get(game_id)
+        if card:
+            game = self.store.get_game(game_id)
+            if game:
+                card.update_game(game)
 
     def _add_game(self):
         cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
@@ -357,7 +360,6 @@ class MainWindow(QMainWindow):
         existing_names = {g.name.lower() for g in self.store.games}
 
         # 使用扫描结果对话框，让用户逐条确认（包含已有项标记）
-        from ui.scan_result_dialog import ScanResultDialog
         dialog = ScanResultDialog(found, self, existing_paths=existing_paths, existing_names=existing_names)
         if dialog.exec():
             for game in dialog.get_selected_games():
@@ -367,10 +369,7 @@ class MainWindow(QMainWindow):
 
     def _manual_select(self):
         """手动选择可执行文件添加为游戏，支持跨目录多次选择"""
-        import traceback
         try:
-            from utils.file_utils import get_exe_name
-            from ui.scan_result_dialog import ScanResultDialog
             cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
             existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
             existing_names = {g.name.lower() for g in self.store.games}
@@ -434,10 +433,8 @@ class MainWindow(QMainWindow):
         self.store.privacy_mode = enabled
         self.store.save_config()
         # 刷新卡片
-        for i in range(self.card_grid.count()):
-            item = self.card_grid.itemAt(i)
-            if item and item.widget() and isinstance(item.widget(), GameCard):
-                item.widget().set_privacy_mode(enabled)
+        for card in self._cards.values():
+            card.set_privacy_mode(enabled)
         # 刷新详情页
         if self.detail_page.game and self.detail_page.isVisible():
             self.detail_page.set_game(self.detail_page.game, self._selected_game_id and self.launcher.is_running(self._selected_game_id))
