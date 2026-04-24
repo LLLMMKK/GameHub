@@ -142,6 +142,73 @@ QMainWindow {
     border-color: #5cb040;
 }
 
+/* 排序下拉框 */
+#sort-combo {
+    background-color: #141c28;
+    border: 1px solid #1e2d3d;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #8fa3b8;
+    font-size: 12px;
+    min-width: 90px;
+}
+
+#sort-combo:hover {
+    border-color: #3a7bd5;
+}
+
+#sort-combo QAbstractItemView {
+    background-color: #141c28;
+    border: 1px solid #1e2d3d;
+    color: #d1d9e6;
+    selection-background-color: #1a2a3e;
+}
+
+/* 排序标签 */
+#sort-label {
+    color: #4a6080;
+    font-size: 12px;
+}
+
+/* 返回按钮 */
+#back-btn {
+    background: transparent;
+    border: none;
+    color: #3a7bd5;
+    font-size: 14px;
+    padding: 6px 0px;
+}
+
+#back-btn:hover {
+    color: #66c0f4;
+}
+
+/* 右键菜单 */
+#card-context-menu {
+    background-color: #1a2535;
+    border: 1px solid #2a4a6a;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+#card-context-menu::item {
+    color: #e8edf3;
+    padding: 6px 24px;
+    border-radius: 4px;
+}
+
+#card-context-menu::item:selected {
+    background-color: #2a4a6a;
+}
+
+/* 详情信息值 */
+#detail-info-value {
+    color: #b0c4de;
+    font-size: 14px;
+    background: transparent;
+    padding-left: 4px;
+}
+
 /* ===== 游戏卡片 ===== */
 #game-card {
     background-color: #141c28;
@@ -192,11 +259,11 @@ QMainWindow {
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #3a8a28, stop:1 #2d6b1e);
     border: none;
-    border-radius: 14px;
+    border-radius: 12px;
     color: #ffffff;
     font-weight: bold;
-    font-size: 14px;
-    padding: 4px;
+    font-size: 11px;
+    padding: 0px;
 }
 
 #card-play-btn:hover {
@@ -214,6 +281,38 @@ QMainWindow {
 }
 
 #card-play-btn[running="true"]:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #e74c3c, stop:1 #c0392b);
+}
+
+/* 悬浮遮罩上的大播放按钮 */
+#card-play-overlay-btn {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #3a8a28, stop:1 #2d6b1e);
+    border: 2px solid rgba(92, 176, 64, 150);
+    border-radius: 28px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 22px;
+}
+
+#card-play-overlay-btn:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5cb040, stop:1 #3a8a28);
+    border-color: rgba(92, 176, 64, 200);
+}
+
+#card-play-overlay-btn:pressed {
+    background-color: #1e4f14;
+}
+
+#card-play-overlay-btn[running="true"] {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #c0392b, stop:1 #96281b);
+    border-color: rgba(231, 76, 60, 150);
+}
+
+#card-play-overlay-btn[running="true"]:hover {
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #e74c3c, stop:1 #c0392b);
 }
@@ -397,7 +496,7 @@ QPushButton#danger-btn:hover {
 QLabel#section-label {
     color: #4a6080;
     font-size: 11px;
-    text-transform: uppercase;
+    letter-spacing: 1px;
     padding-bottom: 4px;
 }
 
@@ -429,7 +528,7 @@ QLabel#section-label {
 
 /* 空状态提示 */
 #empty-hint {
-    color: #2a3f5f;
+    color: #4a6080;
     font-size: 18px;
 }
 

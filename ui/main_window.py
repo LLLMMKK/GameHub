@@ -130,24 +130,13 @@ class MainWindow(QMainWindow):
 
         # 排序选择
         sort_label = QLabel("排序:")
-        sort_label.setStyleSheet("color: #4a6080; font-size: 12px; background: transparent;")
+        sort_label.setObjectName("sort-label")
         layout.addWidget(sort_label)
 
         self.sort_combo = QComboBox()
+        self.sort_combo.setObjectName("sort-combo")
         self.sort_combo.addItems(["名称", "游玩时长", "最近游玩", "添加时间"])
         self.sort_combo.setCurrentIndex(0)
-        self.sort_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #141c28; border: 1px solid #1e2d3d;
-                border-radius: 6px; padding: 6px 10px; color: #8fa3b8;
-                font-size: 12px; min-width: 90px;
-            }
-            QComboBox:hover { border-color: #3a7bd5; }
-            QComboBox QAbstractItemView {
-                background-color: #141c28; border: 1px solid #1e2d3d;
-                color: #d1d9e6; selection-background-color: #1a2a3e;
-            }
-        """)
         self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
         layout.addWidget(self.sort_combo)
 

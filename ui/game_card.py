@@ -4,10 +4,10 @@ from functools import lru_cache
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu
+    QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient
+from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QVariantAnimation, QTimer
+from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QCursor
 
 from core.game_model import Game
 
@@ -64,11 +64,11 @@ def generate_default_cover(name: str, width=260, height=340) -> QPixmap:
         ((39, 174, 96), (18, 90, 50)),       # 绿
         ((211, 84, 0), (130, 50, 0)),        # 橙
         ((192, 57, 43), (120, 30, 20)),      # 红
-        ((22, 160, 133), (10, 90, 75)),      # 青
-        ((52, 152, 219), (25, 85, 130)),     # 亮蓝
-        ((155, 89, 182), (95, 45, 115)),     # 淡紫
+        ((26, 170, 143), (15, 105, 85)),      # 青
+        ((72, 175, 235), (40, 110, 160)),    # 亮蓝
+        ((175, 115, 200), (110, 60, 135)),   # 淡紫
         ((230, 126, 34), (150, 70, 10)),     # 亮橙
-        ((46, 64, 83), (20, 35, 48)),        # 深蓝灰
+        ((80, 130, 170), (50, 85, 120)),      # 蓝灰
     ]
     (r1, g1, b1), (r2, g2, b2) = palettes[color_index]
 
@@ -153,10 +153,11 @@ class GameCard(QWidget):
         self.cover_label.setScaledContents(True)
         cover_layout.addWidget(self.cover_label)
 
-        # 悬浮播放遮罩
+        # 悬浮播放遮罩（初始隐藏，鼠标悬停时淡入）
         self._overlay = QWidget(self._cover_container)
         self._overlay.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT)
-        self._overlay.setStyleSheet("background-color: rgba(0,0,0,0.45); border-radius: 9px 9px 0 0;")
+        self._overlay.move(0, 0)
+        self._overlay.setStyleSheet("background-color: rgba(0,0,0,0); border-radius: 9px 9px 0 0;")
         self._overlay.hide()
 
         overlay_layout = QVBoxLayout(self._overlay)
@@ -164,32 +165,11 @@ class GameCard(QWidget):
 
         # 大播放按钮
         self._big_play_btn = QPushButton("▶" if not self._running else "■")
-        self._big_play_btn.setObjectName("card-play-btn")
+        self._big_play_btn.setObjectName("card-play-overlay-btn")
         self._big_play_btn.setFixedSize(56, 56)
         self._big_play_btn.setProperty("running", str(self._running).lower())
         self._big_play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._big_play_btn.setToolTip("启动游戏" if not self._running else "关闭游戏")
-        self._big_play_btn.setStyleSheet("""
-            #card-play-btn {
-                background-color: rgba(58, 138, 40, 200);
-                border: 2px solid rgba(92, 176, 64, 150);
-                border-radius: 28px;
-                color: white;
-                font-size: 22px;
-                font-weight: bold;
-            }
-            #card-play-btn:hover {
-                background-color: rgba(92, 176, 64, 220);
-                border-color: rgba(92, 176, 64, 200);
-            }
-            #card-play-btn[running="true"] {
-                background-color: rgba(192, 57, 43, 200);
-                border-color: rgba(231, 76, 60, 150);
-            }
-            #card-play-btn[running="true"]:hover {
-                background-color: rgba(231, 76, 60, 220);
-            }
-        """)
         self._big_play_btn.clicked.connect(self._on_play)
         overlay_layout.addWidget(self._big_play_btn)
 
@@ -198,6 +178,9 @@ class GameCard(QWidget):
         self._overlay_hint.setStyleSheet("color: rgba(255,255,255,180); font-size: 12px; background: transparent; border: none;")
         self._overlay_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         overlay_layout.addWidget(self._overlay_hint)
+
+        self._overlay.raise_()
+        self._overlay.installEventFilter(self)
 
         layout.addWidget(self._cover_container)
 
@@ -261,25 +244,6 @@ class GameCard(QWidget):
         self.play_btn.setProperty("running", str(self._running).lower())
         self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.play_btn.setToolTip("启动游戏" if not self._running else "关闭游戏")
-        self.play_btn.setStyleSheet("""
-            #card-play-btn {
-                background-color: #2d6b1e;
-                border: none;
-                border-radius: 12px;
-                color: white;
-                font-size: 11px;
-                font-weight: bold;
-            }
-            #card-play-btn:hover {
-                background-color: #3a8a28;
-            }
-            #card-play-btn[running="true"] {
-                background-color: #96281b;
-            }
-            #card-play-btn[running="true"]:hover {
-                background-color: #c0392b;
-            }
-        """)
         self.play_btn.clicked.connect(self._on_play)
         bottom_row.addWidget(self.play_btn)
 
@@ -320,22 +284,7 @@ class GameCard(QWidget):
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #1a2535;
-                border: 1px solid #2a4a6a;
-                border-radius: 6px;
-                padding: 4px;
-            }
-            QMenu::item {
-                color: #e8edf3;
-                padding: 6px 24px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #2a4a6a;
-            }
-        """)
+        menu.setObjectName("card-context-menu")
         edit_action = menu.addAction("编辑游戏")
         edit_action.triggered.connect(lambda: self.edit_clicked.emit(self.game.id))
         menu.addSeparator()
@@ -350,13 +299,52 @@ class GameCard(QWidget):
 
     def enterEvent(self, event):
         self._hover = True
-        self._overlay.show()
+        self._fade_overlay(1.0)
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        self._hover = False
-        self._overlay.hide()
+        QTimer.singleShot(60, self._check_should_hide)
         super().leaveEvent(event)
+
+    def eventFilter(self, obj, event):
+        if obj is self._overlay:
+            if event.type() == event.Type.Enter:
+                self._hover = True
+                self._fade_overlay(1.0)
+            elif event.type() == event.Type.Leave:
+                QTimer.singleShot(60, self._check_should_hide)
+        return super().eventFilter(obj, event)
+
+    def _check_should_hide(self):
+        if not self.rect().contains(self.mapFromGlobal(QCursor.pos())):
+            self._hover = False
+            self._fade_overlay(0.0)
+
+    def _fade_overlay(self, target: float):
+        """动画过渡遮罩透明度，通过 stylesheet 避免 QGraphicsOpacityEffect 导致的子控件偏移"""
+        if not hasattr(self, '_overlay_anim'):
+            self._overlay_anim = QVariantAnimation(self)
+            self._overlay_anim.setDuration(150)
+            self._overlay_anim.valueChanged.connect(self._on_overlay_anim)
+            self._overlay_anim.finished.connect(self._on_overlay_anim_done)
+        else:
+            self._overlay_anim.stop()
+        cur = 1.0 if self._overlay.isVisible() else 0.0
+        self._overlay_anim.setStartValue(cur)
+        self._overlay_anim.setEndValue(target)
+        if target > 0:
+            self._overlay.show()
+        self._overlay_anim.start()
+
+    def _on_overlay_anim(self, value: float):
+        alpha = int(value * 0.45 * 255)
+        self._overlay.setStyleSheet(
+            f"background-color: rgba(0,0,0,{alpha}); border-radius: 9px 9px 0 0;"
+        )
+
+    def _on_overlay_anim_done(self):
+        if self._overlay_anim.endValue() == 0.0:
+            self._overlay.hide()
 
     def update_game(self, game: Game):
         self.game = game

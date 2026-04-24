@@ -125,7 +125,7 @@ class Sidebar(QWidget):
         # 底部版本
         layout.addStretch()
         version = QLabel("  v1.0.0")
-        version.setStyleSheet("color: #1a2332; font-size: 10px; padding: 8px 18px; background: transparent;")
+        version.setStyleSheet("color: #3d5a80; font-size: 10px; padding: 8px 18px; background: transparent;")
         layout.addWidget(version)
 
     def set_categories(self, categories: list[str], counts: dict[str, int] = None):

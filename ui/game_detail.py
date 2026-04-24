@@ -46,22 +46,10 @@ class GameDetailPage(QWidget):
         top_layout.setContentsMargins(24, 8, 24, 8)
 
         back_btn = QPushButton("←  返回游戏列表")
-        back_btn.setObjectName("toolbar-btn")
+        back_btn.setObjectName("back-btn")
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.setToolTip("返回游戏列表")
         back_btn.clicked.connect(self.back_clicked.emit)
-        back_btn.setStyleSheet("""
-            #toolbar-btn {
-                background: transparent;
-                border: none;
-                color: #3a7bd5;
-                font-size: 14px;
-                padding: 6px 0px;
-            }
-            #toolbar-btn:hover {
-                color: #66c0f4;
-            }
-        """)
         top_layout.addWidget(back_btn)
         top_layout.addStretch()
         outer.addWidget(top_bar)
@@ -283,7 +271,6 @@ class GameDetailPage(QWidget):
 
         value = QLabel("—")
         value.setObjectName("detail-info-value")
-        value.setStyleSheet("color: #b0c4de; font-size: 14px; background: transparent; padding-left: 4px;")
         value.setWordWrap(True)
         value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(value)
