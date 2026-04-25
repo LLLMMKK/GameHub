@@ -430,6 +430,35 @@ QMainWindow {{
     border-color: {green_hover};
 }}
 
+/* 无边框窗口控制按钮 */
+#win-control-btn {{
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: {text_secondary};
+    font-size: 14px;
+    font-weight: bold;
+}}
+
+#win-control-btn:hover {{
+    background-color: {bg_hover};
+    color: {text_primary};
+}}
+
+#win-close-btn {{
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: {text_secondary};
+    font-size: 14px;
+    font-weight: bold;
+}}
+
+#win-close-btn:hover {{
+    background-color: #c0392b;
+    color: #ffffff;
+}}
+
 /* 排序下拉框 */
 #sort-combo {{
     background-color: {bg_card};

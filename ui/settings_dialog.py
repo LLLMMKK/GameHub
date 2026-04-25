@@ -19,10 +19,12 @@ class SettingsDialog(QDialog):
     search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
     theme_changed = pyqtSignal(str)          # 主题变更信号
+    frameless_mode_changed = pyqtSignal(bool)  # 无边框模式变更信号
 
     def __init__(self, data_dir: str, privacy_mode: bool = False,
                  categories: list[str] = None, default_search_engine: str = "baidu",
-                 default_game_dir: str = "", default_theme: str = "暗夜", parent=None):
+                 default_game_dir: str = "", default_theme: str = "暗夜",
+                 frameless_mode: bool = False, parent=None):
         super().__init__(parent)
         self.data_dir = data_dir
         self._privacy_mode = privacy_mode
@@ -30,6 +32,7 @@ class SettingsDialog(QDialog):
         self._default_search_engine = default_search_engine
         self._default_game_dir = default_game_dir
         self._default_theme = default_theme
+        self._frameless_mode = frameless_mode
         self._setup_ui()
 
     def _setup_ui(self):
@@ -78,6 +81,18 @@ class SettingsDialog(QDialog):
         privacy_info.setObjectName("detail-info")
         privacy_info.setStyleSheet("font-size: 11px;")
         form.addRow("", privacy_info)
+
+        # 无边框模式
+        self.frameless_checkbox = QCheckBox("启用无边框模式")
+        self.frameless_checkbox.setChecked(self._frameless_mode)
+        self.frameless_checkbox.setStyleSheet("font-size: 13px;")
+        self.frameless_checkbox.toggled.connect(self._on_frameless_toggled)
+        form.addRow("", self.frameless_checkbox)
+
+        frameless_info = QLabel("开启后，窗口标题栏将集成到应用内部，工具栏可拖拽移动窗口")
+        frameless_info.setObjectName("detail-info")
+        frameless_info.setStyleSheet("font-size: 11px;")
+        form.addRow("", frameless_info)
 
         # 主题选择
         self.theme_combo = QComboBox()
@@ -264,6 +279,10 @@ class SettingsDialog(QDialog):
     def _on_privacy_toggled(self, checked: bool):
         self._privacy_mode = checked
         self.privacy_mode_changed.emit(checked)
+
+    def _on_frameless_toggled(self, checked: bool):
+        self._frameless_mode = checked
+        self.frameless_mode_changed.emit(checked)
 
     def _on_search_engine_changed(self, index: int):
         engine = self.search_engine_combo.itemData(index)

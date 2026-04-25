@@ -5,16 +5,11 @@ import traceback
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QScrollArea, QGridLayout,
-    QFrame, QFileDialog, QMessageBox, QComboBox
-)
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QScrollArea, QGridLayout,
     QFrame, QFileDialog, QMessageBox, QComboBox,
-    QGraphicsOpacityEffect
+    QGraphicsOpacityEffect, QApplication
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QShortcut, QKeySequence, QFont
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRectF
+from PyQt6.QtGui import QShortcut, QKeySequence, QFont, QPainter, QPen, QColor
 
 from core.game_model import GameDataStore, Game
 from core.game_launcher import GameLauncher
@@ -48,14 +43,16 @@ class MainWindow(QMainWindow):
         self._sort_mode = self.store.sort_mode
         self._selected_game_id = None
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
+        self._last_cols = 0  # 上次列数，避免列数不变时重建卡片
 
         # 防抖：resize 时延迟刷新卡片，避免拖动卡顿
         self._resize_timer = QTimer(self)
         self._resize_timer.setSingleShot(True)
-        self._resize_timer.setInterval(150)
+        self._resize_timer.setInterval(50)
         self._resize_timer.timeout.connect(self._refresh_cards)
 
         self._setup_ui()
+        self._apply_frameless_mode(self.store.frameless_mode)
         self._connect_signals()
         self._setup_shortcuts()
         self._setup_splash_overlay()
@@ -117,8 +114,92 @@ class MainWindow(QMainWindow):
         self.detail_page.hide()
         content_layout.addWidget(self.detail_page, 1)
 
+    class _WinControlButton(QPushButton):
+        """手绘窗口控制按钮，避免 Unicode 字符在不同字体下对齐不一致"""
+
+        def __init__(self, icon_type: str, parent=None):
+            super().__init__(parent)
+            self._icon_type = icon_type  # 'min', 'max', 'close'
+            self._is_maximized = False
+            self.setFixedSize(40, 30)
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        def set_maximized_state(self, state: bool):
+            self._is_maximized = state
+            self.update()
+
+        def paintEvent(self, event):
+            super().paintEvent(event)
+            p = QPainter(self)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+            # 用 QSS 中 color 属性对应的 palette 颜色
+            icon_color = self.palette().color(self.foregroundRole())
+            pen = QPen(icon_color, 1.2)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+
+            w, h = self.width(), self.height()
+            cx, cy = w / 2, h / 2
+
+            if self._icon_type == 'min':
+                # 居中短横线
+                y = int(cy)
+                x0, x1 = int(cx - 5), int(cx + 5)
+                p.drawLine(x0, y, x1, y)
+                p.drawLine(x0, y + 1, x1, y + 1)
+
+            elif self._icon_type == 'max':
+                if self._is_maximized:
+                    # 还原图标：前后两个错位方框
+                    s, ox, oy = 7, 2, -2
+                    back = QRectF(cx - s - ox, cy - s - oy, s * 2, s * 2)
+                    front = QRectF(cx - s + ox, cy - s + oy, s * 2, s * 2)
+                    # 前面的框用父窗口背景色填充，盖住后面框的内部
+                    parent_bg = self.window().palette().color(
+                        self.window().backgroundRole())
+                    p.setBrush(parent_bg)
+                    p.drawRect(front)
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawRect(front)
+                    p.drawRect(back)
+                else:
+                    # 最大化：单个空心方框
+                    s = 7
+                    p.drawRect(QRectF(cx - s, cy - s, s * 2, s * 2))
+
+            elif self._icon_type == 'close':
+                # X 形
+                d = 5
+                p.drawLine(int(cx - d), int(cy - d), int(cx + d), int(cy + d))
+                p.drawLine(int(cx - d), int(cy + d), int(cx + d), int(cy - d))
+                p.drawLine(int(cx - d), int(cy - d + 1), int(cx + d - 1), int(cy + d))
+                p.drawLine(int(cx - d + 1), int(cy + d), int(cx + d), int(cy - d + 1))
+
+            p.end()
+
+    class _FramelessToolbar(QWidget):
+        """支持 frameless 模式拖拽的工具栏"""
+        def __init__(self, main_window):
+            super().__init__()
+            self._main = main_window
+
+        def mousePressEvent(self, event):
+            if event.button() == Qt.MouseButton.LeftButton and self._main.store.frameless_mode:
+                self.window().windowHandle().startSystemMove()
+            super().mousePressEvent(event)
+
+        def mouseDoubleClickEvent(self, event):
+            if self._main.store.frameless_mode:
+                win = self.window()
+                if win.isMaximized():
+                    win.showNormal()
+                else:
+                    win.showMaximized()
+            super().mouseDoubleClickEvent(event)
+
     def _create_toolbar(self) -> QWidget:
-        toolbar = QWidget()
+        toolbar = MainWindow._FramelessToolbar(self)
         toolbar.setObjectName("toolbar")
         layout = QHBoxLayout(toolbar)
         layout.setContentsMargins(24, 10, 24, 10)
@@ -187,6 +268,28 @@ class MainWindow(QMainWindow):
         settings_btn.clicked.connect(self._show_settings)
         layout.addWidget(settings_btn)
 
+        layout.addSpacing(12)
+
+        # 窗口控制按钮（仅 frameless 模式显示）
+        self._btn_minimize = MainWindow._WinControlButton('min')
+        self._btn_minimize.setObjectName("win-control-btn")
+        self._btn_minimize.clicked.connect(self.showMinimized)
+        self._btn_minimize.hide()
+        layout.addWidget(self._btn_minimize)
+
+        self._btn_maximize = MainWindow._WinControlButton('max')
+        self._btn_maximize.setObjectName("win-control-btn")
+        self._btn_maximize.clicked.connect(self._toggle_maximize)
+        self._btn_maximize.hide()
+        layout.addWidget(self._btn_maximize)
+
+        self._btn_close = MainWindow._WinControlButton('close')
+        self._btn_close.setObjectName("win-close-btn")
+        self._btn_close.clicked.connect(self.close)
+        self._btn_close.hide()
+        layout.addWidget(self._btn_close)
+
+        self.toolbar_widget = toolbar
         return toolbar
 
     def _connect_signals(self):
@@ -235,10 +338,15 @@ class MainWindow(QMainWindow):
             self.sidebar.update_counts(counts)
 
         # 刷新卡片
-        self._refresh_cards()
+        self._refresh_cards(force=True)
 
-    def _refresh_cards(self):
-        """刷新游戏卡片"""
+    def _refresh_cards(self, force=False):
+        """刷新游戏卡片 — force=True 时跳过列数缓存检查"""
+        cols = self._calc_columns()
+        if not force and cols == self._last_cols and self.card_grid.count() > 0:
+            return
+        self._last_cols = cols
+
         # 清除旧卡片
         self._cards.clear()
         while self.card_grid.count():
@@ -268,14 +376,6 @@ class MainWindow(QMainWindow):
 
         self.empty_label.hide()
 
-        # 计算列数
-        if self.isVisible():
-            viewport_width = self.scroll_area.viewport().width()
-        else:
-            # 窗口未显示时精确估算：窗口宽 - 侧边栏(211) - 滚动条(6)
-            viewport_width = max(800, self.width() - 217)
-        cols = max(1, (viewport_width - 40) // (GameCard.CARD_WIDTH + 16))
-
         for i, game in enumerate(games):
             card = GameCard(game)
             card.set_privacy_mode(self.store.privacy_mode)
@@ -286,6 +386,13 @@ class MainWindow(QMainWindow):
             row, col = divmod(i, cols)
             self.card_grid.addWidget(card, row, col)
             self._cards[game.id] = card
+
+    def _calc_columns(self):
+        if self.isVisible():
+            viewport_width = self.scroll_area.viewport().width()
+        else:
+            viewport_width = max(800, self.width() - 217)
+        return max(1, (viewport_width - 40) // (GameCard.CARD_WIDTH + 16))
 
     def _get_filtered_games(self) -> list[Game]:
         if self._search_query:
@@ -313,7 +420,7 @@ class MainWindow(QMainWindow):
         self._sort_mode = modes[index]
         self.store.sort_mode = self._sort_mode
         self.store.save_config()
-        self._refresh_cards()
+        self._refresh_cards(force=True)
 
     # --- 事件处理 ---
 
@@ -321,11 +428,11 @@ class MainWindow(QMainWindow):
         self._current_category = category
         self._search_query = ""
         self.sidebar.search_box.clear()
-        self._refresh_cards()
+        self._refresh_cards(force=True)
 
     def _on_search_changed(self, query: str):
         self._search_query = query
-        self._refresh_cards()
+        self._refresh_cards(force=True)
 
     def _show_detail(self, game_id: str):
         game = self.store.get_game(game_id)
@@ -540,16 +647,79 @@ class MainWindow(QMainWindow):
         self.store.save_config()
         QApplication.instance().setStyleSheet(THEMES.get(theme_name, THEMES["暗夜"]))
 
+    def _toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def _apply_frameless_mode(self, enabled: bool):
+        """应用/取消无边框模式"""
+        was_visible = self.isVisible()
+        was_maximized = self.isMaximized()
+
+        # 保存窗口外部几何（含框架），切换标志后恢复，防止标题栏跑出屏幕
+        frame_geo = self.frameGeometry() if was_visible and not was_maximized else None
+        if was_maximized:
+            self.showNormal()
+
+        if enabled:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+            self._btn_minimize.show()
+            self._btn_maximize.show()
+            self._btn_close.show()
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.FramelessWindowHint)
+            self._btn_minimize.hide()
+            self._btn_maximize.hide()
+            self._btn_close.hide()
+        self.store.frameless_mode = enabled
+        self.store.save_config()
+
+        if was_maximized:
+            self.showMaximized()
+        elif was_visible and frame_geo is not None:
+            self.setGeometry(frame_geo)
+            self.show()
+            # show() 后原生窗口可能被系统重新定位，下一轮事件循环强制校准
+            QTimer.singleShot(0, lambda: self._clamp_to_screen())
+
+    def _clamp_to_screen(self):
+        """确保窗口框架顶部不低于屏幕可用区域顶部"""
+        screen = QApplication.instance().primaryScreen()
+        if screen is None:
+            return
+        top = screen.availableGeometry().top()
+        fg = self.frameGeometry()
+        if fg.top() < top:
+            self.move(fg.left(), top)
+
+    def _on_frameless_mode_changed(self, enabled: bool):
+        """设置窗口 frameless 模式切换"""
+        self._apply_frameless_mode(enabled)
+
+    def changeEvent(self, event):
+        if event.type() == event.Type.WindowStateChange:
+            self._btn_maximize.set_maximized_state(self.isMaximized())
+        super().changeEvent(event)
+
     def _show_settings(self):
         dialog = SettingsDialog(
             self.store.data_dir, self.store.privacy_mode,
             self.store.categories, self.store.default_search_engine,
-            self.store.default_game_dir, self.store.theme, self
+            self.store.default_game_dir, self.store.theme,
+            self.store.frameless_mode, self
         )
+        # 确保 dialog 有独立窗口装饰，不受 frameless 父窗口影响
+        flags = Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint | Qt.WindowType.WindowTitleHint
+        if self.store.frameless_mode:
+            dialog.setWindowFlags(flags)
+            dialog.move(self.geometry().center() - dialog.rect().center())
         dialog.privacy_mode_changed.connect(self._toggle_privacy)
         dialog.search_engine_changed.connect(self._on_search_engine_changed)
         dialog.game_dir_changed.connect(self._on_game_dir_changed)
         dialog.theme_changed.connect(self._on_theme_changed)
+        dialog.frameless_mode_changed.connect(self._on_frameless_mode_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._refresh)
         dialog.exec()
