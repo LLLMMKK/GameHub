@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         # 当前状态
         self._current_category = "全部"
         self._search_query = ""
-        self._sort_mode = "name"  # name / play_time / last_played / added_time
+        self._sort_mode = self.store.sort_mode
         self._selected_game_id = None
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
 
@@ -136,7 +136,8 @@ class MainWindow(QMainWindow):
         self.sort_combo = QComboBox()
         self.sort_combo.setObjectName("sort-combo")
         self.sort_combo.addItems(["名称", "游玩时长", "最近游玩", "添加时间"])
-        self.sort_combo.setCurrentIndex(0)
+        modes = ["name", "play_time", "last_played", "added_time"]
+        self.sort_combo.setCurrentIndex(modes.index(self._sort_mode) if self._sort_mode in modes else 0)
         self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
         layout.addWidget(self.sort_combo)
 
@@ -260,10 +261,12 @@ class MainWindow(QMainWindow):
 
         self.empty_label.hide()
 
-        # 计算列数（首次加载时 viewport 可能尚未布局，用窗口宽度估算）
-        viewport_width = self.scroll_area.viewport().width()
-        if viewport_width <= 100:
-            viewport_width = max(800, self.width() - 260)
+        # 计算列数
+        if self.isVisible():
+            viewport_width = self.scroll_area.viewport().width()
+        else:
+            # 窗口未显示时精确估算：窗口宽 - 侧边栏(211) - 滚动条(6)
+            viewport_width = max(800, self.width() - 217)
         cols = max(1, (viewport_width - 40) // (GameCard.CARD_WIDTH + 16))
 
         for i, game in enumerate(games):
@@ -301,6 +304,8 @@ class MainWindow(QMainWindow):
     def _on_sort_changed(self, index: int):
         modes = ["name", "play_time", "last_played", "added_time"]
         self._sort_mode = modes[index]
+        self.store.sort_mode = self._sort_mode
+        self.store.save_config()
         self._refresh_cards()
 
     # --- 事件处理 ---
@@ -557,8 +562,10 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
-        # 首次显示时 viewport 宽度才确定，需要重新刷新卡片布局
-        QTimer.singleShot(50, self._refresh_cards)
+        # 首次显示后根据真实 viewport 微调列数（仅在列数变化时刷新一次）
+        if not hasattr(self, '_initial_layout_done'):
+            self._initial_layout_done = True
+            QTimer.singleShot(50, self._refresh_cards)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

@@ -116,6 +116,7 @@ class GameDataStore:
         self.default_search_engine: str = "baidu"
         self.default_game_dir: str = ""
         self.theme: str = "暗夜"
+        self.sort_mode: str = "name"
         self._ensure_data_dir()
         self.load()
 
@@ -132,6 +133,7 @@ class GameDataStore:
                 self.default_search_engine = config.get("default_search_engine", "baidu")
                 self.default_game_dir = config.get("default_game_dir", "")
                 self.theme = config.get("theme", "暗夜")
+                self.sort_mode = config.get("sort_mode", "name")
             except (json.JSONDecodeError, KeyError):
                 pass
 
@@ -160,7 +162,7 @@ class GameDataStore:
 
     def save_config(self):
         self._ensure_data_dir()
-        config = {"privacy_mode": self.privacy_mode, "default_search_engine": self.default_search_engine, "default_game_dir": self.default_game_dir, "theme": self.theme}
+        config = {"privacy_mode": self.privacy_mode, "default_search_engine": self.default_search_engine, "default_game_dir": self.default_game_dir, "theme": self.theme, "sort_mode": self.sort_mode}
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
