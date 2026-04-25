@@ -207,28 +207,13 @@ class GameCard(QWidget):
         # 分类小标签
         if self.game.category and self.game.category != "其他":
             cat_label = QLabel(self.game.category)
-            cat_label.setStyleSheet("""
-                color: #3a7bd5;
-                background-color: #141c28;
-                border: 1px solid #1e2d3d;
-                border-radius: 3px;
-                padding: 1px 6px;
-                font-size: 10px;
-            """)
+            cat_label.setObjectName("card-cat-tag")
             bottom_row.addWidget(cat_label)
 
         # R18 红色标签
         if self.game.is_r18:
             r18_label = QLabel("R18")
-            r18_label.setStyleSheet("""
-                color: #ff4444;
-                background-color: #2a0a0a;
-                border: 1px solid #ff4444;
-                border-radius: 3px;
-                padding: 1px 5px;
-                font-size: 9px;
-                font-weight: bold;
-            """)
+            r18_label.setObjectName("card-r18-tag")
             bottom_row.addWidget(r18_label)
 
         self.time_label = QLabel(self.game.format_play_time())

@@ -63,7 +63,7 @@ class WebSearchDialog(QDialog):
         # === 图片搜索 ===
         img_header = QLabel("图片搜索")
         img_header.setObjectName("dialog-title")
-        img_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #e8edf3;")
+        img_header.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(img_header)
 
         hint1 = QLabel("点击下方按钮在浏览器中搜索图片，然后回来粘贴图片链接")
@@ -142,7 +142,7 @@ class WebSearchDialog(QDialog):
         # === 文本搜索 ===
         txt_header = QLabel("文本搜索")
         txt_header.setObjectName("dialog-title")
-        txt_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #e8edf3;")
+        txt_header.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(txt_header)
 
         hint2 = QLabel("点击下方按钮在浏览器中搜索，然后回来粘贴游戏介绍文本")

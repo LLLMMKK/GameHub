@@ -18,16 +18,18 @@ class SettingsDialog(QDialog):
     categories_changed = pyqtSignal()        # 分类变更信号
     search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
+    theme_changed = pyqtSignal(str)          # 主题变更信号
 
     def __init__(self, data_dir: str, privacy_mode: bool = False,
                  categories: list[str] = None, default_search_engine: str = "baidu",
-                 default_game_dir: str = "", parent=None):
+                 default_game_dir: str = "", default_theme: str = "暗夜", parent=None):
         super().__init__(parent)
         self.data_dir = data_dir
         self._privacy_mode = privacy_mode
         self._categories = list(categories) if categories else []
         self._default_search_engine = default_search_engine
         self._default_game_dir = default_game_dir
+        self._default_theme = default_theme
         self._setup_ui()
 
     def _setup_ui(self):
@@ -67,14 +69,28 @@ class SettingsDialog(QDialog):
         # 隐私模式
         self.privacy_checkbox = QCheckBox("启用隐私模式")
         self.privacy_checkbox.setChecked(self._privacy_mode)
-        self.privacy_checkbox.setStyleSheet("color: #e8edf3; font-size: 13px;")
+        self.privacy_checkbox.setObjectName("settings-section-title")
+        self.privacy_checkbox.setStyleSheet("font-size: 13px;")
         self.privacy_checkbox.toggled.connect(self._on_privacy_toggled)
         form.addRow("", self.privacy_checkbox)
 
         privacy_info = QLabel("开启后，R18 游戏的封面将被打马赛克，名称将被遮蔽")
         privacy_info.setObjectName("detail-info")
-        privacy_info.setStyleSheet("color: #4a6080; font-size: 11px;")
+        privacy_info.setStyleSheet("font-size: 11px;")
         form.addRow("", privacy_info)
+
+        # 主题选择
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem("暗夜")
+        self.theme_combo.addItem("赛博朋克")
+        self.theme_combo.addItem("毛玻璃")
+        self.theme_combo.addItem("拟物质感")
+        self.theme_combo.addItem("极简白")
+        idx = self.theme_combo.findText(self._default_theme)
+        if idx >= 0:
+            self.theme_combo.setCurrentIndex(idx)
+        self.theme_combo.currentTextChanged.connect(self._on_theme_changed)
+        form.addRow("主题风格:", self.theme_combo)
 
         # 默认搜索引擎
         self.search_engine_combo = QComboBox()
@@ -101,7 +117,7 @@ class SettingsDialog(QDialog):
 
         game_dir_info = QLabel("选择文件或扫描目录时的默认起始路径")
         game_dir_info.setObjectName("detail-info")
-        game_dir_info.setStyleSheet("color: #4a6080; font-size: 11px;")
+        game_dir_info.setStyleSheet("font-size: 11px;")
         form.addRow("", game_dir_info)
 
         layout.addLayout(form)
@@ -114,13 +130,13 @@ class SettingsDialog(QDialog):
 
         # 分类管理区域
         cat_header = QLabel("分类管理")
-        cat_header.setStyleSheet(
-            "color: #e8edf3; font-size: 15px; font-weight: bold; background: transparent;"
-        )
+        cat_header.setObjectName("settings-section-title")
+        cat_header.setStyleSheet("font-size: 15px; background: transparent;")
         layout.addWidget(cat_header)
 
         cat_info = QLabel("添加或删除游戏分类。删除分类后，该分类下的游戏将归入「其他」。")
-        cat_info.setStyleSheet("color: #4a6080; font-size: 11px; background: transparent;")
+        cat_info.setObjectName("detail-info")
+        cat_info.setStyleSheet("font-size: 11px; background: transparent;")
         cat_info.setWordWrap(True)
         layout.addWidget(cat_info)
 
@@ -189,13 +205,12 @@ class SettingsDialog(QDialog):
             row_layout.setSpacing(8)
 
             cat_label = QLabel(cat)
-            cat_label.setStyleSheet("color: #b0c4de; font-size: 13px; background: transparent;")
+            cat_label.setObjectName("settings-cat-label")
+            cat_label.setStyleSheet("font-size: 13px; background: transparent;")
 
             is_fixed = cat in FIXED_CATEGORIES
             if is_fixed:
-                cat_label.setStyleSheet(
-                    "color: #4a6080; font-size: 13px; background: transparent;"
-                )
+                cat_label.setObjectName("detail-info")
 
             row_layout.addWidget(cat_label, 1)
 
@@ -255,6 +270,10 @@ class SettingsDialog(QDialog):
         if engine:
             self._default_search_engine = engine
             self.search_engine_changed.emit(engine)
+
+    def _on_theme_changed(self, name: str):
+        self._default_theme = name
+        self.theme_changed.emit(name)
 
     def _change_game_dir(self):
         start = self.game_dir_input.text() or ""

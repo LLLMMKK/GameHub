@@ -520,15 +520,24 @@ class MainWindow(QMainWindow):
         self.store.default_game_dir = path
         self.store.save_config()
 
+    def _on_theme_changed(self, theme_name: str):
+        """切换主题"""
+        from PyQt6.QtWidgets import QApplication
+        from ui.styles import THEMES
+        self.store.theme = theme_name
+        self.store.save_config()
+        QApplication.instance().setStyleSheet(THEMES.get(theme_name, THEMES["暗夜"]))
+
     def _show_settings(self):
         dialog = SettingsDialog(
             self.store.data_dir, self.store.privacy_mode,
             self.store.categories, self.store.default_search_engine,
-            self.store.default_game_dir, self
+            self.store.default_game_dir, self.store.theme, self
         )
         dialog.privacy_mode_changed.connect(self._toggle_privacy)
         dialog.search_engine_changed.connect(self._on_search_engine_changed)
         dialog.game_dir_changed.connect(self._on_game_dir_changed)
+        dialog.theme_changed.connect(self._on_theme_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._refresh)
         dialog.exec()

@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QFrame, QScrollArea, QTextEdit, QGridLayout
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QColor
+from PyQt6.QtGui import QPixmap, QColor, QFont
 
 from core.game_model import Game
 from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap
@@ -30,7 +30,7 @@ class GameDetailPage(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setStyleSheet("background-color: #0e1621;")
+        self.setObjectName("detail-root")
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -71,13 +71,9 @@ class GameDetailPage(QWidget):
 
         # === 左侧：封面 ===
         self.cover_label = QLabel()
+        self.cover_label.setObjectName("detail-cover")
         self.cover_label.setFixedSize(315, 420)
         self.cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cover_label.setStyleSheet("""
-            background-color: #141c28;
-            border-radius: 12px;
-            border: 1px solid #1a2332;
-        """)
         content_layout.addWidget(self.cover_label)
 
         # === 右侧面板 ===
@@ -88,7 +84,6 @@ class GameDetailPage(QWidget):
         self.title_label = QLabel()
         self.title_label.setObjectName("detail-title")
         self.title_label.setWordWrap(True)
-        self.title_label.setStyleSheet("font-size: 32px; font-weight: bold; background: transparent;")
         right.addWidget(self.title_label)
 
         right.addSpacing(6)
@@ -102,11 +97,7 @@ class GameDetailPage(QWidget):
         badges.addWidget(self.category_label)
 
         self.r18_label = QLabel("R18")
-        self.r18_label.setStyleSheet("""
-            color: #ff4444; background-color: #2a0a0a;
-            border: 1px solid #ff4444; border-radius: 4px;
-            padding: 2px 10px; font-size: 12px; font-weight: bold;
-        """)
+        self.r18_label.setObjectName("detail-r18-tag")
         self.r18_label.hide()
         badges.addWidget(self.r18_label)
 
@@ -117,11 +108,14 @@ class GameDetailPage(QWidget):
 
         # 启动按钮
         self.play_btn = QPushButton("▶  启动游戏")
-        self.play_btn.setObjectName("play-btn")
+        self.play_btn.setObjectName("secondary-btn")
         self.play_btn.setFixedHeight(56)
         self.play_btn.setMinimumWidth(240)
         self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.play_btn.clicked.connect(self._on_play)
+        f = self.play_btn.font()
+        f.setBold(True)
+        self.play_btn.setFont(f)
         right.addWidget(self.play_btn)
 
         right.addSpacing(28)
@@ -207,9 +201,12 @@ class GameDetailPage(QWidget):
         action_row.addWidget(self.open_dir_btn)
 
         self.delete_btn = QPushButton("删除游戏")
-        self.delete_btn.setObjectName("danger-btn")
+        self.delete_btn.setObjectName("secondary-btn")
         self.delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.delete_btn.clicked.connect(self._on_delete)
+        f = self.delete_btn.font()
+        f.setBold(True)
+        self.delete_btn.setFont(f)
         action_row.addWidget(self.delete_btn)
 
         action_row.addStretch()
@@ -326,12 +323,8 @@ class GameDetailPage(QWidget):
     def _update_play_button(self):
         if self._running:
             self.play_btn.setText("■  关闭游戏")
-            self.play_btn.setProperty("running", "true")
         else:
             self.play_btn.setText("▶  启动游戏")
-            self.play_btn.setProperty("running", "false")
-        self.play_btn.style().unpolish(self.play_btn)
-        self.play_btn.style().polish(self.play_btn)
 
     # ── 操作 ──
 
