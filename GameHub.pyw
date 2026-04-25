@@ -1,18 +1,27 @@
 """GameHub - 无终端窗口启动器"""
 import sys
 import os
+import ctypes
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+def _get_base_dir():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+sys.path.insert(0, _get_base_dir())
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from ui.main_window import MainWindow
 from ui.styles import THEMES, DARK_STYLE
 
 
 def _load_theme():
     import json
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "config.json")
+    config_path = os.path.join(_get_base_dir(), "data", "config.json")
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
@@ -22,13 +31,22 @@ def _load_theme():
 
 
 def main():
+    # 设置 AppUserModelID，让 Windows 任务栏显示独立图标而非 python 图标
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("GameHub.GameManager")
+
     app = QApplication(sys.argv)
     theme = _load_theme()
     app.setStyleSheet(THEMES.get(theme, DARK_STYLE))
     app.setApplicationName("GameHub")
     app.setApplicationDisplayName("GameHub - 游戏管理器")
 
+    # 设置应用图标
+    icon_path = os.path.join(_get_base_dir(), "ui", "icon.ico")
+    app_icon = QIcon(icon_path)
+    app.setWindowIcon(app_icon)
+
     window = MainWindow()
+    window.setWindowIcon(app_icon)
     window.show()
 
     sys.exit(app.exec())

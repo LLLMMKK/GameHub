@@ -22,7 +22,7 @@
 GameHub/
 ├── README.md
 ├── GameHub.pyw              # 无终端入口
-├── main.py                  # 入口
+├── main.py                  # 控制台入口
 ├── requirements.txt         # 依赖
 ├── data/                    # 运行时数据（游戏列表、封面、配置）
 │   ├── games.json
@@ -34,6 +34,7 @@ GameHub/
 │   ├── play_tracker.py      # 游玩时长追踪
 │   └── game_scanner.py      # 目录扫描，自动识别游戏 exe
 ├── ui/                      # 界面组件
+│   ├── icon.ico             # 应用图标
 │   ├── main_window.py       # 主窗口
 │   ├── sidebar.py           # 侧边栏（分类导航 + 搜索）
 │   ├── game_card.py         # 游戏卡片（封面、默认封面生成）
@@ -50,10 +51,21 @@ GameHub/
 
 ## 安装与运行
 
+**直接运行：**
+
 ```bash
 pip install -r requirements.txt
-python main.py
+python main.py          # 控制台模式
+python GameHub.pyw      # 无控制台（Windows）
 ```
+
+**打包为 exe：**
+
+```bash
+python -m PyInstaller --onefile --windowed --icon=../ui/icon.ico --add-data "../ui/icon.ico;ui" --name GameHub --distpath . --specpath build GameHub.pyw
+```
+
+打包后生成的 `GameHub.exe` 可独立运行，无需安装 Python。运行时数据保存在 exe 同目录下的 `data/` 文件夹中。
 
 依赖：Python 3.10+，PyQt6 >= 6.5.0
 

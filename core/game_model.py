@@ -1,6 +1,7 @@
 """游戏数据模型与数据管理"""
 import json
 import os
+import sys
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -99,7 +100,12 @@ class GameDataStore:
 
     def __init__(self, data_dir: str = None):
         if data_dir is None:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+            if getattr(sys, "frozen", False):
+                # PyInstaller 打包后，数据目录放在 exe 旁边
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            data_dir = os.path.join(base_dir, "data")
         self.data_dir = data_dir
         self.games_file = os.path.join(data_dir, "games.json")
         self.config_file = os.path.join(data_dir, "config.json")
