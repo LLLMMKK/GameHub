@@ -501,7 +501,7 @@ QMainWindow {{
     background-color: {bg_card};
     border-radius: 10px;
     border: 1px solid {border};
-    padding: 0px;
+    padding: 24px 20px 8px 20px;
 }}
 
 #game-card:hover {{
@@ -568,7 +568,7 @@ QMainWindow {{
     color: {text_on_accent};
     font-weight: bold;
     font-size: 11px;
-    padding: 0px;
+    padding: 24px 20px 8px 20px;
 }}
 
 #card-play-btn:hover {{
@@ -1012,7 +1012,6 @@ def _build_style(colors: dict) -> str:
     """根据颜色方案生成 QSS，额外覆盖需要多层格式化的样式"""
     style = _STYLE_TEMPLATE.format(**colors)
     return style
-
 
 THEMES = {name: _build_style(colors) for name, colors in _COLORS.items()}
 DARK_STYLE = THEMES["暗夜"]

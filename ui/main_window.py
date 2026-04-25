@@ -7,8 +7,14 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QScrollArea, QGridLayout,
     QFrame, QFileDialog, QMessageBox, QComboBox
 )
-from PyQt6.QtCore import Qt, QTimer, QVariantAnimation, QEasingCurve
-from PyQt6.QtGui import QShortcut, QKeySequence, QFont, QColor
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
+    QPushButton, QLabel, QScrollArea, QGridLayout,
+    QFrame, QFileDialog, QMessageBox, QComboBox,
+    QGraphicsOpacityEffect
+)
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QShortcut, QKeySequence, QFont
 
 from core.game_model import GameDataStore, Game
 from core.game_launcher import GameLauncher
@@ -567,23 +573,21 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(400, self._start_splash_anim)
 
     def _setup_splash_overlay(self):
-        """创建开屏覆盖层（不透明），等 showEvent 后再启动渐变动画"""
+        """创建开屏覆盖层，等 showEvent 后再启动渐变动画"""
         colors = self._splash_colors()
-        bg_hex = colors['bg_primary'].lstrip('#')
-        self._splash_rgb = tuple(int(bg_hex[i:i+2], 16) for i in (0, 2, 4))
 
         overlay = QWidget(self)
         overlay.setGeometry(0, 0, self.width(), self.height())
-        overlay.setStyleSheet(f"background-color: rgba({self._splash_rgb[0]},{self._splash_rgb[1]},{self._splash_rgb[2]},255);")
+        overlay.setStyleSheet(f"background-color: {colors['bg_primary']};")
         overlay.raise_()
 
         layout = QVBoxLayout(overlay)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        play_icon = QLabel("▶")
-        play_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        play_icon.setStyleSheet(f"color: {colors['accent']}; font-size: 56px; background: transparent;")
-        layout.addWidget(play_icon)
+        icon = QLabel("▶")
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setStyleSheet(f"color: {colors['accent']}; font-size: 56px; background: transparent;")
+        layout.addWidget(icon)
 
         title = QLabel("GameHub")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -600,28 +604,28 @@ class MainWindow(QMainWindow):
         subtitle.setStyleSheet(f"color: {colors['text_muted']}; font-size: 14px; background: transparent;")
         layout.addWidget(subtitle)
 
+        # 用 QGraphicsOpacityEffect 统一控制透明度
+        self._splash_effect = QGraphicsOpacityEffect(overlay)
+        self._splash_effect.setOpacity(1.0)
+        overlay.setGraphicsEffect(self._splash_effect)
+
         overlay.show()
         self._splash_overlay = overlay
 
     def _start_splash_anim(self):
-        self._splash_anim = QVariantAnimation(self)
+        self._splash_anim = QPropertyAnimation(self._splash_effect, b"opacity")
         self._splash_anim.setDuration(700)
         self._splash_anim.setStartValue(1.0)
         self._splash_anim.setEndValue(0.0)
         self._splash_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self._splash_anim.valueChanged.connect(self._on_splash_anim)
         self._splash_anim.finished.connect(self._on_splash_finished)
         self._splash_anim.start()
-
-    def _on_splash_anim(self, value: float):
-        alpha = int(value * 255)
-        r, g, b = self._splash_rgb
-        self._splash_overlay.setStyleSheet(f"background-color: rgba({r},{g},{b},{alpha});")
 
     def _on_splash_finished(self):
         self._splash_overlay.hide()
         self._splash_overlay.deleteLater()
         self._splash_overlay = None
+        self._splash_effect = None
         self._splash_anim = None
 
     def _splash_colors(self) -> dict:

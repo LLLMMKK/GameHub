@@ -21,7 +21,6 @@ from ui.styles import THEMES, DARK_STYLE
 
 
 def _load_theme():
-    """从 config.json 读取主题设置"""
     import json
     config_path = os.path.join(_get_base_dir(), "data", "config.json")
     try:
@@ -33,7 +32,6 @@ def _load_theme():
 
 
 def main():
-    # 设置 AppUserModelID，让 Windows 任务栏显示独立图标而非 python 图标
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("GameHub.GameManager")
 
     app = QApplication(sys.argv)
@@ -42,7 +40,6 @@ def main():
     app.setApplicationName("GameHub")
     app.setApplicationDisplayName("GameHub - 游戏管理器")
 
-    # 设置应用图标
     icon_path = os.path.join(_get_base_dir(), "ui", "icon.ico")
     app_icon = QIcon(icon_path)
     app.setWindowIcon(app_icon)
