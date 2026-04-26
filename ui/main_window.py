@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
 
         self.grid_container = QWidget()
         self.grid_layout = QVBoxLayout(self.grid_container)
-        self.grid_layout.setContentsMargins(20, 16, 20, 16)
+        self.grid_layout.setContentsMargins(20, 16, 8, 16)
         self.grid_layout.setSpacing(16)
         self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -399,7 +399,7 @@ class MainWindow(QMainWindow):
             viewport_width = self.scroll_area.viewport().width()
         else:
             viewport_width = max(800, self.width() - 217)
-        return max(1, (viewport_width - 40) // (GameCard.CARD_WIDTH + 16))
+        return max(1, (viewport_width - 28) // (GameCard.CARD_WIDTH + 16))
 
     def _get_filtered_games(self) -> list[Game]:
         if self._search_query:
@@ -760,6 +760,13 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         if not self.store.frameless_mode or self.isMaximized():
+            return super().eventFilter(obj, event)
+
+        # 只处理 MainWindow 自身 widget 的事件，对话框/弹出窗口放行
+        if isinstance(obj, QWidget) and obj.window() is not self:
+            return super().eventFilter(obj, event)
+        # 有模态对话框激活时也放行，防止对话框控件触发边缘缩放
+        if QApplication.activeModalWidget() is not None:
             return super().eventFilter(obj, event)
 
         t = event.type()
