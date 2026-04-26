@@ -23,8 +23,11 @@ from ui.scan_result_dialog import ScanResultDialog
 from ui.widgets.win_control_button import WinControlButton
 from ui.widgets.frameless_toolbar import FramelessToolbar
 from ui.widgets.frameless_resize_mixin import FramelessResizeMixin
-from ui.styles import THEMES
+from ui.styles import THEMES, _COLORS
 from utils.file_utils import get_exe_name
+
+_SORT_LABELS = ["名称", "游玩时长", "最近游玩", "添加时间"]
+_SORT_MODES = ["name", "play_time", "last_played", "added_time"]
 
 
 class MainWindow(FramelessResizeMixin, QMainWindow):
@@ -59,6 +62,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._setup_ui()
         self._connect_signals()
         self._setup_shortcuts()
+        self._splash_started = False
         self._setup_splash_overlay()
         # 若以无边框模式启动，先用正常窗口短暂 show 一次，
         # 让 Windows DWM 记录窗口的带边框状态，之后切换才能正确渲染边框
@@ -69,6 +73,10 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self.setWindowOpacity(1.0)
         self._apply_frameless_mode(self.store.frameless_mode)
         self._refresh()
+
+    @property
+    def _default_category(self) -> str:
+        return self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
 
     def _setup_ui(self):
         central = QWidget()
@@ -152,9 +160,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
         self.sort_combo = QComboBox()
         self.sort_combo.setObjectName("sort-combo")
-        self.sort_combo.addItems(["名称", "游玩时长", "最近游玩", "添加时间"])
-        modes = ["name", "play_time", "last_played", "added_time"]
-        self.sort_combo.setCurrentIndex(modes.index(self._sort_mode) if self._sort_mode in modes else 0)
+        self.sort_combo.addItems(_SORT_LABELS)
+        self.sort_combo.setCurrentIndex(_SORT_MODES.index(self._sort_mode) if self._sort_mode in _SORT_MODES else 0)
         self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
         layout.addWidget(self.sort_combo)
 
@@ -341,15 +348,12 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             "added_time": lambda g: g.added_time,
         }.get(self._sort_mode)
         if key_fn:
-            if self._sort_mode == "last_played":
-                games.sort(key=key_fn, reverse=True)
-            else:
-                games.sort(key=key_fn)
+            reverse = self._sort_mode == "last_played"
+            games.sort(key=key_fn, reverse=reverse)
         return games
 
     def _on_sort_changed(self, index: int):
-        modes = ["name", "play_time", "last_played", "added_time"]
-        self._sort_mode = modes[index]
+        self._sort_mode = _SORT_MODES[index]
         self.store.sort_mode = self._sort_mode
         self.store.save_config()
         self._refresh_cards(force=True)
@@ -423,7 +427,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.sidebar.update_counts(self._compute_category_counts())
 
     def _add_game(self):
-        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        cat = self._default_category
         dialog = AddGameDialog(self.store, default_category=cat, parent=self)
         if dialog.exec():
             self._refresh()
@@ -468,7 +472,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             return
 
         # 将扫描到的游戏归入当前分类
-        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        cat = self._default_category
         for game in found:
             game.category = cat
 
@@ -486,7 +490,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def _manual_select(self):
         """手动选择可执行文件添加为游戏，支持跨目录多次选择"""
-        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        cat = self._default_category
         existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
         existing_names = {g.name.lower() for g in self.store.games}
         pending: list[Game] = []
@@ -636,12 +640,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         super().changeEvent(event)
 
     def _show_settings(self):
-        dialog = SettingsDialog(
-            self.store.data_dir, self.store.privacy_mode,
-            self.store.categories, self.store.default_search_engine,
-            self.store.default_game_dir, self.store.theme,
-            self.store.frameless_mode, self
-        )
+        dialog = SettingsDialog(self.store, self)
         # 确保 dialog 有独立窗口装饰，不受 frameless 父窗口影响
         flags = Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint | Qt.WindowType.WindowTitleHint
         if self.store.frameless_mode:
@@ -671,7 +670,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
-        if self._splash_overlay:
+        if self._splash_overlay and not self._splash_started:
+            self._splash_started = True
             QTimer.singleShot(400, self._start_splash_anim)
 
     def _setup_splash_overlay(self):
@@ -731,7 +731,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._splash_anim = None
 
     def _splash_colors(self) -> dict:
-        from ui.styles import _COLORS
         theme = getattr(self.store, 'theme', '暗夜')
         return _COLORS.get(theme, _COLORS['暗夜'])
 

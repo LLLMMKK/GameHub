@@ -22,18 +22,15 @@ class SettingsDialog(QDialog):
     theme_changed = pyqtSignal(str)          # 主题变更信号
     frameless_mode_changed = pyqtSignal(bool)  # 无边框模式变更信号
 
-    def __init__(self, data_dir: str, privacy_mode: bool = False,
-                 categories: list[str] = None, default_search_engine: str = "baidu",
-                 default_game_dir: str = "", default_theme: str = "暗夜",
-                 frameless_mode: bool = False, parent=None):
+    def __init__(self, store, parent=None):
         super().__init__(parent)
-        self.data_dir = data_dir
-        self._privacy_mode = privacy_mode
-        self._categories = list(categories) if categories else []
-        self._default_search_engine = default_search_engine
-        self._default_game_dir = default_game_dir
-        self._default_theme = default_theme
-        self._frameless_mode = frameless_mode
+        self.data_dir = store.data_dir
+        self._privacy_mode = store.privacy_mode
+        self._categories = list(store.categories)
+        self._default_search_engine = store.default_search_engine
+        self._default_game_dir = store.default_game_dir
+        self._default_theme = store.theme
+        self._frameless_mode = store.frameless_mode
         self._setup_ui()
 
     def _setup_ui(self):
