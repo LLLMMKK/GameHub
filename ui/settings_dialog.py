@@ -54,16 +54,10 @@ class SettingsDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(12)
 
-        # 数据目录
-        dir_row = QHBoxLayout()
+        # 数据目录（只读展示）
         self.dir_input = QLineEdit(self.data_dir)
         self.dir_input.setReadOnly(True)
-        dir_btn = QPushButton("更改")
-        dir_btn.setObjectName("file-btn")
-        dir_btn.clicked.connect(self._change_dir)
-        dir_row.addWidget(self.dir_input, 1)
-        dir_row.addWidget(dir_btn)
-        form.addRow("数据目录:", dir_row)
+        form.addRow("数据目录:", self.dir_input)
 
         # 信息
         info = QLabel("数据目录存储游戏列表、封面和统计数据。\n更改目录不会移动现有数据。")
@@ -258,11 +252,6 @@ class SettingsDialog(QDialog):
             self._categories.remove(name)
         self._refresh_cat_list()
         self.categories_changed.emit()
-
-    def _change_dir(self):
-        path = QFileDialog.getExistingDirectory(self, "选择数据目录")
-        if path:
-            self.dir_input.setText(path)
 
     def _on_privacy_toggled(self, checked: bool):
         self._privacy_mode = checked

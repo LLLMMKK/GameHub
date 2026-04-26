@@ -1,11 +1,10 @@
 """主窗口 - 整合侧边栏、游戏卡片网格、详情面板"""
 import os
-import traceback
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QScrollArea, QGridLayout,
-    QFrame, QFileDialog, QMessageBox, QComboBox,
+    QFrame, QFileDialog, QMessageBox, QComboBox, QDialog,
     QGraphicsOpacityEffect, QApplication
 )
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
@@ -24,6 +23,7 @@ from ui.scan_result_dialog import ScanResultDialog
 from ui.widgets.win_control_button import WinControlButton
 from ui.widgets.frameless_toolbar import FramelessToolbar
 from ui.widgets.frameless_resize_mixin import FramelessResizeMixin
+from ui.styles import THEMES
 from utils.file_utils import get_exe_name
 
 
@@ -486,53 +486,42 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def _manual_select(self):
         """手动选择可执行文件添加为游戏，支持跨目录多次选择"""
-        try:
-            cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
-            existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
-            existing_names = {g.name.lower() for g in self.store.games}
-            all_new_games = []
-            seen_paths = set()
+        cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        existing_paths = {os.path.normpath(g.exe_path).lower() for g in self.store.games}
+        existing_names = {g.name.lower() for g in self.store.games}
+        pending: list[Game] = []
+        seen = set()
 
-            while True:
-                start_dir = self.store.default_game_dir or ""
-                files, _ = QFileDialog.getOpenFileNames(
-                    self, "选择游戏可执行文件", start_dir,
-                    "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
-                )
-                if not files and not all_new_games:
+        while True:
+            start_dir = self.store.default_game_dir or ""
+            files, _ = QFileDialog.getOpenFileNames(
+                self, "选择游戏可执行文件", start_dir,
+                "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
+            )
+            if not files:
+                if not pending:
                     return
-                if not files:
-                    break
+                break
 
-                for path in files:
-                    norm = os.path.normpath(path).lower()
-                    if norm in seen_paths:
-                        continue
-                    seen_paths.add(norm)
-                    name = get_exe_name(path)
-                    game = Game(name=name, exe_path=path, category=cat)
-                    all_new_games.append(game)
-
-                if not all_new_games:
-                    QMessageBox.information(self, "提示", "选择的文件已在列表中")
-                    return
-
-                dialog = ScanResultDialog(all_new_games, self, allow_add_more=True,
-                                          existing_paths=existing_paths, existing_names=existing_names)
-                result = dialog.exec()
-                all_new_games = dialog.get_selected_games()
-                if result == ScanResultDialog.ADD_MORE_RESULT:
+            for path in files:
+                norm = os.path.normpath(path).lower()
+                if norm in seen:
                     continue
-                elif result == 1:  # QDialog.Accepted
-                    for game in all_new_games:
-                        self.store.add_game(game)
-                    self._refresh()
-                    return
-                else:
-                    return
-        except Exception:
-            traceback.print_exc()
-            QMessageBox.critical(self, "手动选择出错", traceback.format_exc()[:500])
+                seen.add(norm)
+                pending.append(Game(name=get_exe_name(path), exe_path=path, category=cat))
+
+            dlg = ScanResultDialog(pending, self, allow_add_more=True,
+                                   existing_paths=existing_paths, existing_names=existing_names)
+            action = dlg.exec()
+            pending = dlg.get_selected_games()
+
+            if action == ScanResultDialog.ADD_MORE_RESULT:
+                continue
+            if action == QDialog.DialogCode.Accepted:
+                for g in pending:
+                    self.store.add_game(g)
+                self._refresh()
+            return
 
     def _on_cover_changed(self, path: str):
         if self.detail_page.game:
@@ -554,7 +543,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             card.set_privacy_mode(enabled)
         # 刷新详情页
         if self.detail_page.game and self.detail_page.isVisible():
-            self.detail_page.set_game(self.detail_page.game, self._selected_game_id and self.launcher.is_running(self._selected_game_id))
+            running = self._selected_game_id and self.launcher.is_running(self._selected_game_id)
+            self.detail_page.set_game(self.detail_page.game, running)
 
     def _on_search_engine_changed(self, engine: str):
         """更新默认搜索引擎"""
@@ -567,9 +557,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.store.save_config()
 
     def _on_theme_changed(self, theme_name: str):
-        """切换主题"""
-        from PyQt6.QtWidgets import QApplication
-        from ui.styles import THEMES
         self.store.theme = theme_name
         self.store.save_config()
         QApplication.instance().setStyleSheet(THEMES.get(theme_name, THEMES["暗夜"]))

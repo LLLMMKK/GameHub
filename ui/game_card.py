@@ -182,6 +182,12 @@ class GameCard(QWidget):
         self._overlay.raise_()
         self._overlay.installEventFilter(self)
 
+        # 遮罩淡入淡出动画
+        self._overlay_anim = QVariantAnimation(self)
+        self._overlay_anim.setDuration(150)
+        self._overlay_anim.valueChanged.connect(self._on_overlay_anim)
+        self._overlay_anim.finished.connect(self._on_overlay_anim_done)
+
         layout.addWidget(self._cover_container)
 
         # 信息区域
@@ -306,14 +312,7 @@ class GameCard(QWidget):
             self._fade_overlay(0.0)
 
     def _fade_overlay(self, target: float):
-        """动画过渡遮罩透明度，通过 stylesheet 避免 QGraphicsOpacityEffect 导致的子控件偏移"""
-        if not hasattr(self, '_overlay_anim'):
-            self._overlay_anim = QVariantAnimation(self)
-            self._overlay_anim.setDuration(150)
-            self._overlay_anim.valueChanged.connect(self._on_overlay_anim)
-            self._overlay_anim.finished.connect(self._on_overlay_anim_done)
-        else:
-            self._overlay_anim.stop()
+        self._overlay_anim.stop()
         cur = 1.0 if self._overlay.isVisible() else 0.0
         self._overlay_anim.setStartValue(cur)
         self._overlay_anim.setEndValue(target)
