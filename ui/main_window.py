@@ -37,8 +37,6 @@ class MainWindow(QMainWindow):
         self.tracker = PlayTracker(self.store)
         self.scanner = GameScanner()
 
-        self.setMouseTracking(True)
-
         # 当前状态
         self._current_category = "全部"
         self._search_query = ""
@@ -675,14 +673,16 @@ class MainWindow(QMainWindow):
         if enabled:
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
             self._main_layout.setContentsMargins(5, 5, 5, 5)
-            self.centralWidget().installEventFilter(self)
+            self._set_resize_mouse_tracking(True)
+            QApplication.instance().installEventFilter(self)
             self._btn_minimize.show()
             self._btn_maximize.show()
             self._btn_close.show()
         else:
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.FramelessWindowHint)
             self._main_layout.setContentsMargins(0, 0, 0, 0)
-            self.centralWidget().removeEventFilter(self)
+            self._set_resize_mouse_tracking(False)
+            QApplication.instance().removeEventFilter(self)
             self._restore_override_cursor()
             self._btn_minimize.hide()
             self._btn_maximize.hide()
@@ -711,6 +711,13 @@ class MainWindow(QMainWindow):
     # ---- 无边框边缘拖拽缩放 ----
 
     _EDGE_MARGIN = 5  # 边缘检测范围（px），与 _main_layout margins 保持一致
+
+    def _set_resize_mouse_tracking(self, enabled):
+        """递归启用/禁用 central widget 及其所有子孙的 mouseTracking"""
+        central = self.centralWidget()
+        central.setMouseTracking(enabled)
+        for w in central.findChildren(QFrame):
+            w.setMouseTracking(enabled)
 
     def _hit_edge(self, pos):
         """返回鼠标位置对应的窗口边缘 Qt.Edge，不在边缘返回 None"""
@@ -759,7 +766,8 @@ class MainWindow(QMainWindow):
 
         if t == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
-                edge = self._hit_edge(event.pos())
+                pos = self.mapFromGlobal(event.globalPosition().toPoint())
+                edge = self._hit_edge(pos)
                 if edge is not None:
                     self._resize_edge = edge
                     self._resize_start_geo = self.geometry()
@@ -770,7 +778,8 @@ class MainWindow(QMainWindow):
             if self._resize_edge is not None:
                 self._do_resize(event.globalPosition().toPoint())
                 return True
-            edge = self._hit_edge(event.pos())
+            pos = self.mapFromGlobal(event.globalPosition().toPoint())
+            edge = self._hit_edge(pos)
             if edge is not None:
                 self._set_override_cursor(self._edge_cursor(edge))
             else:
@@ -783,6 +792,10 @@ class MainWindow(QMainWindow):
                 self._resize_start_pos = None
                 self._restore_override_cursor()
                 return True
+
+        elif t == QEvent.Type.Leave:
+            if obj is self.centralWidget() and self._resize_edge is None:
+                self._restore_override_cursor()
 
         return super().eventFilter(obj, event)
 
