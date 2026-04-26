@@ -1,6 +1,8 @@
 """游戏详情页面 - 封面与介绍并排，支持长文本滚动"""
 import os
+import webbrowser
 from datetime import datetime
+from urllib.parse import quote
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QScrollArea, QTextEdit, QGridLayout
@@ -10,6 +12,22 @@ from PyQt6.QtGui import QPixmap, QColor, QFont
 
 from core.game_model import Game
 from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap
+
+
+_SEARCH_ENGINES = {
+    "baidu": {
+        "image": "https://image.baidu.com/search/index?tn=baiduimage&word={query}",
+        "info": "https://www.baidu.com/s?wd={query}",
+    },
+    "bing": {
+        "image": "https://www.bing.com/images/search?q={query}",
+        "info": "https://www.bing.com/search?q={query}",
+    },
+    "google": {
+        "image": "https://www.google.com/search?tbm=isch&q={query}",
+        "info": "https://www.google.com/search?q={query}",
+    },
+}
 
 
 class GameDetailPage(QWidget):
@@ -367,49 +385,29 @@ class GameDetailPage(QWidget):
         if self.game:
             self._open_search("steam")
 
-    SEARCH_ENGINES = {
-        "baidu": {
-            "image": "https://image.baidu.com/search/index?tn=baiduimage&word={query}",
-            "info": "https://www.baidu.com/s?wd={query}",
-        },
-        "bing": {
-            "image": "https://www.bing.com/images/search?q={query}",
-            "info": "https://www.bing.com/search?q={query}",
-        },
-        "google": {
-            "image": "https://www.google.com/search?tbm=isch&q={query}",
-            "info": "https://www.google.com/search?q={query}",
-        },
-    }
-
     def _open_search(self, tab: str = "image"):
         if not self.game:
             return
-        import webbrowser
-        from urllib.parse import quote
-        from ui.web_search_dialog import WebSearchDialog
+
         parent = self.window()
-        data_dir = ""
-        game_id = self.game.id
-        engine = "baidu"
-        if hasattr(parent, 'store'):
-            data_dir = parent.store.data_dir
-            engine = parent.store.default_search_engine
+        data_dir = getattr(parent, 'store', None)
         if not data_dir:
             return
-
+        data_dir = data_dir.data_dir
+        game_id = self.game.id
+        engine = parent.store.default_search_engine
         name = self.game.name
-        engine_urls = self.SEARCH_ENGINES.get(engine, self.SEARCH_ENGINES["baidu"])
+
+        engine_urls = _SEARCH_ENGINES.get(engine, _SEARCH_ENGINES["baidu"])
 
         if tab == "image":
-            url = engine_urls["image"].format(query=quote(name + ' 游戏封面'))
-            webbrowser.open(url)
+            webbrowser.open(engine_urls["image"].format(query=quote(name + ' 游戏封面')))
         elif tab == "info":
-            url = engine_urls["info"].format(query=quote(name + ' 游戏 介绍'))
-            webbrowser.open(url)
+            webbrowser.open(engine_urls["info"].format(query=quote(name + ' 游戏 介绍')))
         elif tab == "steam":
             webbrowser.open(f"https://store.steampowered.com/search/?term={quote(name)}")
 
+        from ui.web_search_dialog import WebSearchDialog
         dlg = WebSearchDialog(name, data_dir, game_id, self)
         dlg.cover_selected.connect(self._on_cover_selected)
         dlg.desc_selected.connect(self._on_desc_selected)

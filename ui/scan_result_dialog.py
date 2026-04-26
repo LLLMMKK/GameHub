@@ -8,6 +8,22 @@ from PyQt6.QtCore import Qt
 
 from core.game_model import Game
 
+# 删除按钮通用样式
+_DELETE_BTN_STYLE = """
+    QPushButton {
+        background-color: #3a1a1a;
+        border: 1px solid #5a2a2a;
+        border-radius: 4px;
+        color: #e07070;
+        font-size: 11px;
+    }
+    QPushButton:hover {
+        background-color: #5a2a2a;
+        border-color: #c0392b;
+        color: #ff8888;
+    }
+"""
+
 
 class ScanResultDialog(QDialog):
     """扫描结果对话框"""
@@ -162,20 +178,7 @@ class ScanResultDialog(QDialog):
         remove_btn = QPushButton("移除")
         remove_btn.setFixedSize(52, 26)
         remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        remove_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3a1a1a;
-                border: 1px solid #5a2a2a;
-                border-radius: 4px;
-                color: #e07070;
-                font-size: 11px;
-            }
-            QPushButton:hover {
-                background-color: #5a2a2a;
-                border-color: #c0392b;
-                color: #ff8888;
-            }
-        """)
+        remove_btn.setStyleSheet(_DELETE_BTN_STYLE)
         remove_btn.clicked.connect(lambda checked, idx=index: self._remove_item(idx))
         layout.addWidget(remove_btn)
 

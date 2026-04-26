@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QScrollArea, QFrame, QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from ui.scan_result_dialog import _DELETE_BTN_STYLE
 
 
 # 不可删除的分类
@@ -233,20 +234,7 @@ class SettingsDialog(QDialog):
                 del_btn = QPushButton("删除")
                 del_btn.setFixedSize(52, 26)
                 del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                del_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #3a1a1a;
-                        border: 1px solid #5a2a2a;
-                        border-radius: 4px;
-                        color: #e07070;
-                        font-size: 11px;
-                    }
-                    QPushButton:hover {
-                        background-color: #5a2a2a;
-                        border-color: #c0392b;
-                        color: #ff8888;
-                    }
-                """)
+                del_btn.setStyleSheet(_DELETE_BTN_STYLE)
                 del_btn.clicked.connect(lambda checked, c=cat: self._remove_category(c))
                 row_layout.addWidget(del_btn)
 

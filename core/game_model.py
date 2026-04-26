@@ -10,6 +10,7 @@ from typing import Optional
 
 # 预设分类
 DEFAULT_CATEGORIES = ["全部", "最近游玩", "动作", "策略", "RPG", "冒险", "模拟", "体育", "竞速", "休闲", "Galgame", "其他"]
+PROTECTED_CATEGORIES = DEFAULT_CATEGORIES[:2]  # "全部" 和 "最近游玩" 不可删除
 
 
 @dataclass
@@ -175,11 +176,8 @@ class GameDataStore:
         return game
 
     def update_game(self, game: Game):
-        for i, g in enumerate(self.games):
-            if g.id == game.id:
-                self.games[i] = game
-                self._games_by_id[game.id] = game
-                break
+        assert game.id in self._games_by_id, f"Unknown game id: {game.id}"
+        self._games_by_id[game.id] = game
         self.save()
 
     def remove_game(self, game_id: str):
@@ -214,7 +212,7 @@ class GameDataStore:
             self.save()
 
     def remove_category(self, name: str):
-        if name in self.categories and name not in DEFAULT_CATEGORIES[:3]:
+        if name in self.categories and name not in PROTECTED_CATEGORIES:
             self.categories.remove(name)
             for g in self.games:
                 if g.category == name:

@@ -11,6 +11,15 @@ from PyQt6.QtGui import QPixmap
 from utils.file_utils import save_cover
 
 
+_SEARCH_ENGINE_BTN_STYLE = """
+    #search-engine-btn {
+        background-color: #141c28; border: 1px solid #1e2d3d;
+        border-radius: 8px; padding: 9px 14px; color: #8fa3b8; font-size: 12px;
+    }
+    #search-engine-btn:hover { background-color: #1a2a3e; border-color: #3a7bd5; color: #ffffff; }
+"""
+
+
 class ImageDownloader(QThread):
     """后台下载图片线程"""
     finished = pyqtSignal(bool, bytes)  # success, data
@@ -81,13 +90,7 @@ class WebSearchDialog(QDialog):
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet("""
-                #search-engine-btn {
-                    background-color: #141c28; border: 1px solid #1e2d3d;
-                    border-radius: 8px; padding: 9px 14px; color: #8fa3b8; font-size: 12px;
-                }
-                #search-engine-btn:hover { background-color: #1a2a3e; border-color: #3a7bd5; color: #ffffff; }
-            """)
+            btn.setStyleSheet(_SEARCH_ENGINE_BTN_STYLE)
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             img_row1.addWidget(btn)
 

@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
     QFrame, QFileDialog, QMessageBox, QComboBox,
     QGraphicsOpacityEffect, QApplication
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRectF, QEvent
-from PyQt6.QtGui import QShortcut, QKeySequence, QFont, QPainter, QPen, QColor
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QShortcut, QKeySequence, QFont
 
 from core.game_model import GameDataStore, Game
 from core.game_launcher import GameLauncher
@@ -21,10 +21,13 @@ from ui.game_detail import GameDetailPage
 from ui.add_game_dialog import AddGameDialog
 from ui.settings_dialog import SettingsDialog
 from ui.scan_result_dialog import ScanResultDialog
+from ui.widgets.win_control_button import WinControlButton
+from ui.widgets.frameless_toolbar import FramelessToolbar
+from ui.widgets.frameless_resize_mixin import FramelessResizeMixin
 from utils.file_utils import get_exe_name
 
 
-class MainWindow(QMainWindow):
+class MainWindow(FramelessResizeMixin, QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("GameHub - 游戏管理器")
@@ -45,11 +48,7 @@ class MainWindow(QMainWindow):
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
         self._last_cols = 0  # 上次列数，避免列数不变时重建卡片
 
-        # 边缘拖拽缩放状态
-        self._resize_edge = None         # Qt.Edge | None
-        self._resize_start_geo = None    # QRect
-        self._resize_start_pos = None    # QPoint (global)
-        self._override_cursor_active = False
+        self.init_resize_state()
 
         # 防抖：resize 时延迟刷新卡片，避免拖动卡顿
         self._resize_timer = QTimer(self)
@@ -128,92 +127,8 @@ class MainWindow(QMainWindow):
         self.detail_page.hide()
         content_layout.addWidget(self.detail_page, 1)
 
-    class _WinControlButton(QPushButton):
-        """手绘窗口控制按钮，避免 Unicode 字符在不同字体下对齐不一致"""
-
-        def __init__(self, icon_type: str, parent=None):
-            super().__init__(parent)
-            self._icon_type = icon_type  # 'min', 'max', 'close'
-            self._is_maximized = False
-            self.setFixedSize(40, 30)
-            self.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        def set_maximized_state(self, state: bool):
-            self._is_maximized = state
-            self.update()
-
-        def paintEvent(self, event):
-            super().paintEvent(event)
-            p = QPainter(self)
-            p.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-            # 用 QSS 中 color 属性对应的 palette 颜色
-            icon_color = self.palette().color(self.foregroundRole())
-            pen = QPen(icon_color, 1.2)
-            p.setPen(pen)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-
-            w, h = self.width(), self.height()
-            cx, cy = w / 2, h / 2
-
-            if self._icon_type == 'min':
-                # 居中短横线
-                y = int(cy)
-                x0, x1 = int(cx - 5), int(cx + 5)
-                p.drawLine(x0, y, x1, y)
-                p.drawLine(x0, y + 1, x1, y + 1)
-
-            elif self._icon_type == 'max':
-                if self._is_maximized:
-                    # 还原图标：前后两个错位方框
-                    s, ox, oy = 7, 2, -2
-                    back = QRectF(cx - s - ox, cy - s - oy, s * 2, s * 2)
-                    front = QRectF(cx - s + ox, cy - s + oy, s * 2, s * 2)
-                    # 前面的框用父窗口背景色填充，盖住后面框的内部
-                    parent_bg = self.window().palette().color(
-                        self.window().backgroundRole())
-                    p.setBrush(parent_bg)
-                    p.drawRect(front)
-                    p.setBrush(Qt.BrushStyle.NoBrush)
-                    p.drawRect(front)
-                    p.drawRect(back)
-                else:
-                    # 最大化：单个空心方框
-                    s = 7
-                    p.drawRect(QRectF(cx - s, cy - s, s * 2, s * 2))
-
-            elif self._icon_type == 'close':
-                # X 形
-                d = 5
-                p.drawLine(int(cx - d), int(cy - d), int(cx + d), int(cy + d))
-                p.drawLine(int(cx - d), int(cy + d), int(cx + d), int(cy - d))
-                p.drawLine(int(cx - d), int(cy - d + 1), int(cx + d - 1), int(cy + d))
-                p.drawLine(int(cx - d + 1), int(cy + d), int(cx + d), int(cy - d + 1))
-
-            p.end()
-
-    class _FramelessToolbar(QWidget):
-        """支持 frameless 模式拖拽的工具栏"""
-        def __init__(self, main_window):
-            super().__init__()
-            self._main = main_window
-
-        def mousePressEvent(self, event):
-            if event.button() == Qt.MouseButton.LeftButton and self._main.store.frameless_mode:
-                self.window().windowHandle().startSystemMove()
-            super().mousePressEvent(event)
-
-        def mouseDoubleClickEvent(self, event):
-            if self._main.store.frameless_mode:
-                win = self.window()
-                if win.isMaximized():
-                    win.showNormal()
-                else:
-                    win.showMaximized()
-            super().mouseDoubleClickEvent(event)
-
     def _create_toolbar(self) -> QWidget:
-        toolbar = MainWindow._FramelessToolbar(self)
+        toolbar = FramelessToolbar(lambda: self.store.frameless_mode)
         toolbar.setObjectName("toolbar")
         layout = QHBoxLayout(toolbar)
         layout.setContentsMargins(24, 10, 24, 10)
@@ -285,19 +200,19 @@ class MainWindow(QMainWindow):
         layout.addSpacing(12)
 
         # 窗口控制按钮（仅 frameless 模式显示）
-        self._btn_minimize = MainWindow._WinControlButton('min')
+        self._btn_minimize = WinControlButton('min')
         self._btn_minimize.setObjectName("win-control-btn")
         self._btn_minimize.clicked.connect(self.showMinimized)
         self._btn_minimize.hide()
         layout.addWidget(self._btn_minimize)
 
-        self._btn_maximize = MainWindow._WinControlButton('max')
+        self._btn_maximize = WinControlButton('max')
         self._btn_maximize.setObjectName("win-control-btn")
         self._btn_maximize.clicked.connect(self._toggle_maximize)
         self._btn_maximize.hide()
         layout.addWidget(self._btn_maximize)
 
-        self._btn_close = MainWindow._WinControlButton('close')
+        self._btn_close = WinControlButton('close')
         self._btn_close.setObjectName("win-close-btn")
         self._btn_close.clicked.connect(self.close)
         self._btn_close.hide()
@@ -335,14 +250,17 @@ class MainWindow(QMainWindow):
         if self.detail_page.isVisible():
             self._close_detail()
 
-    def _refresh(self):
-        """刷新界面"""
-        # 更新侧边栏
+    def _compute_category_counts(self) -> dict:
         counts = {"全部": len(self.store.games)}
         recent = [g for g in self.store.games if g.last_played]
         counts["最近游玩"] = len(recent)
         for game in self.store.games:
             counts[game.category] = counts.get(game.category, 0) + 1
+        return counts
+
+    def _refresh(self):
+        """刷新界面"""
+        counts = self._compute_category_counts()
 
         # 只在分类列表变化时重建按钮，平时仅更新计数
         current_cats = [b.category_name for b in self.sidebar._buttons]
@@ -502,12 +420,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_sidebar_counts(self):
         """仅更新侧边栏计数，不重建按钮"""
-        counts = {"全部": len(self.store.games)}
-        recent = [g for g in self.store.games if g.last_played]
-        counts["最近游玩"] = len(recent)
-        for game in self.store.games:
-            counts[game.category] = counts.get(game.category, 0) + 1
-        self.sidebar.update_counts(counts)
+        self.sidebar.update_counts(self._compute_category_counts())
 
     def _add_game(self):
         cat = self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
@@ -719,131 +632,6 @@ class MainWindow(QMainWindow):
         fg = self.frameGeometry()
         if fg.top() < top:
             self.move(fg.left(), top)
-
-    # ---- 无边框边缘拖拽缩放 ----
-
-    _EDGE_MARGIN = 5  # 边缘检测范围（px），与 _main_layout margins 保持一致
-
-    def _set_resize_mouse_tracking(self, enabled):
-        """递归启用/禁用 central widget 及其所有子孙的 mouseTracking"""
-        central = self.centralWidget()
-        central.setMouseTracking(enabled)
-        for w in central.findChildren(QFrame):
-            w.setMouseTracking(enabled)
-
-    def _hit_edge(self, pos):
-        """返回鼠标位置对应的窗口边缘 Qt.Edge，不在边缘返回 None"""
-        m = self._EDGE_MARGIN
-        r = self.rect()
-        l = pos.x() < m
-        ri = pos.x() > r.width() - m
-        t = pos.y() < m
-        b = pos.y() > r.height() - m
-        if t and l:    return Qt.Edge.TopEdge | Qt.Edge.LeftEdge
-        if t and ri:   return Qt.Edge.TopEdge | Qt.Edge.RightEdge
-        if b and l:    return Qt.Edge.BottomEdge | Qt.Edge.LeftEdge
-        if b and ri:   return Qt.Edge.BottomEdge | Qt.Edge.RightEdge
-        if t:          return Qt.Edge.TopEdge
-        if b:          return Qt.Edge.BottomEdge
-        if l:          return Qt.Edge.LeftEdge
-        if ri:         return Qt.Edge.RightEdge
-        return None
-
-    @staticmethod
-    def _edge_cursor(edge):
-        """映射 Qt.Edge → CursorShape"""
-        if edge == Qt.Edge.TopEdge or edge == Qt.Edge.BottomEdge:
-            return Qt.CursorShape.SizeVerCursor
-        if edge == Qt.Edge.LeftEdge or edge == Qt.Edge.RightEdge:
-            return Qt.CursorShape.SizeHorCursor
-        if edge == (Qt.Edge.TopEdge | Qt.Edge.LeftEdge) or edge == (Qt.Edge.BottomEdge | Qt.Edge.RightEdge):
-            return Qt.CursorShape.SizeFDiagCursor
-        return Qt.CursorShape.SizeBDiagCursor
-
-    def _set_override_cursor(self, shape):
-        if not self._override_cursor_active:
-            QApplication.setOverrideCursor(shape)
-            self._override_cursor_active = True
-
-    def _restore_override_cursor(self):
-        if self._override_cursor_active:
-            QApplication.restoreOverrideCursor()
-            self._override_cursor_active = False
-
-    def eventFilter(self, obj, event):
-        if not self.store.frameless_mode or self.isMaximized():
-            return super().eventFilter(obj, event)
-
-        # 只处理 MainWindow 自身 widget 的事件，对话框/弹出窗口放行
-        if isinstance(obj, QWidget) and obj.window() is not self:
-            return super().eventFilter(obj, event)
-        # 有模态对话框激活时也放行，防止对话框控件触发边缘缩放
-        if QApplication.activeModalWidget() is not None:
-            return super().eventFilter(obj, event)
-
-        t = event.type()
-
-        if t == QEvent.Type.MouseButtonPress:
-            if event.button() == Qt.MouseButton.LeftButton:
-                pos = self.mapFromGlobal(event.globalPosition().toPoint())
-                edge = self._hit_edge(pos)
-                if edge is not None:
-                    self._resize_edge = edge
-                    self._resize_start_geo = self.geometry()
-                    self._resize_start_pos = event.globalPosition().toPoint()
-                    return True
-
-        elif t == QEvent.Type.MouseMove:
-            if self._resize_edge is not None:
-                self._do_resize(event.globalPosition().toPoint())
-                return True
-            pos = self.mapFromGlobal(event.globalPosition().toPoint())
-            edge = self._hit_edge(pos)
-            if edge is not None:
-                self._set_override_cursor(self._edge_cursor(edge))
-            else:
-                self._restore_override_cursor()
-
-        elif t == QEvent.Type.MouseButtonRelease:
-            if self._resize_edge is not None:
-                self._resize_edge = None
-                self._resize_start_geo = None
-                self._resize_start_pos = None
-                self._restore_override_cursor()
-                return True
-
-        elif t == QEvent.Type.Leave:
-            if obj is self.centralWidget() and self._resize_edge is None:
-                self._restore_override_cursor()
-
-        return super().eventFilter(obj, event)
-
-    def _do_resize(self, global_pos):
-        delta = global_pos - self._resize_start_pos
-        geo = self._resize_start_geo
-        edge = self._resize_edge
-        min_w, min_h = self.minimumWidth(), self.minimumHeight()
-
-        top, left, right, bottom = geo.top(), geo.left(), geo.right(), geo.bottom()
-
-        if edge & Qt.Edge.TopEdge:
-            new_top = top + delta.y()
-            if bottom - new_top >= min_h:
-                top = new_top
-        if edge & Qt.Edge.BottomEdge:
-            new_bottom = bottom + delta.y()
-            if new_bottom - top >= min_h:
-                bottom = new_bottom
-        if edge & Qt.Edge.LeftEdge:
-            new_left = left + delta.x()
-            if right - new_left >= min_w:
-                left = new_left
-        if edge & Qt.Edge.RightEdge:
-            new_right = right + delta.x()
-            if new_right - left >= min_w:
-                right = new_right
-
-        self.setGeometry(left, top, right - left, bottom - top)
 
     def _on_frameless_mode_changed(self, enabled: bool):
         """设置窗口 frameless 模式切换"""
