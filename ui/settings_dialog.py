@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFileDialog, QFormLayout, QLineEdit, QCheckBox,
-    QWidget, QScrollArea, QFrame, QComboBox
+    QWidget, QScrollArea, QFrame, QComboBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from ui.scan_result_dialog import _DELETE_BTN_STYLE
@@ -35,8 +35,8 @@ class SettingsDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle("设置")
-        self.setMinimumWidth(480)
-        self.setMinimumHeight(400)
+        self.setMinimumWidth(520)
+        self.setMinimumHeight(440)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
@@ -47,46 +47,111 @@ class SettingsDialog(QDialog):
         title.setObjectName("dialog-title")
         layout.addWidget(title)
 
-        # 表单
-        form = QFormLayout()
-        form.setSpacing(12)
+        # 标签页
+        tabs = QTabWidget()
+        tabs.addTab(self._create_general_tab(), "常规")
+        tabs.addTab(self._create_appearance_tab(), "外观")
+        tabs.addTab(self._create_categories_tab(), "分类")
+        tabs.addTab(self._create_about_tab(), "关于")
+        layout.addWidget(tabs)
 
-        # 数据目录（只读展示）
+        # 底部按钮
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        close_btn = QPushButton("关闭")
+        close_btn.setObjectName("primary-btn")
+        close_btn.clicked.connect(self.accept)
+        btn_row.addWidget(close_btn)
+
+        layout.addLayout(btn_row)
+
+    def _create_general_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        # 数据目录
+        section = QLabel("数据管理")
+        section.setObjectName("settings-section-title")
+        layout.addWidget(section)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+
         self.dir_input = QLineEdit(self.data_dir)
         self.dir_input.setReadOnly(True)
         form.addRow("数据目录:", self.dir_input)
 
-        # 信息
         info = QLabel("数据目录存储游戏列表、封面和统计数据。\n更改目录不会移动现有数据。")
         info.setObjectName("detail-info")
         form.addRow("", info)
 
-        # 隐私模式
-        self.privacy_checkbox = QCheckBox("启用隐私模式")
-        self.privacy_checkbox.setChecked(self._privacy_mode)
-        self.privacy_checkbox.setObjectName("settings-section-title")
-        self.privacy_checkbox.setStyleSheet("font-size: 13px;")
-        self.privacy_checkbox.toggled.connect(self._on_privacy_toggled)
-        form.addRow("", self.privacy_checkbox)
+        layout.addLayout(form)
+        layout.addSpacing(8)
 
-        privacy_info = QLabel("开启后，R18 游戏的封面将被打马赛克，名称将被遮蔽")
-        privacy_info.setObjectName("detail-info")
-        privacy_info.setStyleSheet("font-size: 11px;")
-        form.addRow("", privacy_info)
+        # 默认游戏库
+        section2 = QLabel("游戏库")
+        section2.setObjectName("settings-section-title")
+        layout.addWidget(section2)
 
-        # 无边框模式
-        self.frameless_checkbox = QCheckBox("启用无边框模式")
-        self.frameless_checkbox.setChecked(self._frameless_mode)
-        self.frameless_checkbox.setStyleSheet("font-size: 13px;")
-        self.frameless_checkbox.toggled.connect(self._on_frameless_toggled)
-        form.addRow("", self.frameless_checkbox)
+        form2 = QFormLayout()
+        form2.setSpacing(10)
 
-        frameless_info = QLabel("开启后，窗口标题栏将集成到应用内部，工具栏可拖拽移动窗口")
-        frameless_info.setObjectName("detail-info")
-        frameless_info.setStyleSheet("font-size: 11px;")
-        form.addRow("", frameless_info)
+        game_dir_row = QHBoxLayout()
+        self.game_dir_input = QLineEdit(self._default_game_dir)
+        self.game_dir_input.setPlaceholderText("未设置")
+        game_dir_btn = QPushButton("浏览")
+        game_dir_btn.setObjectName("file-btn")
+        game_dir_btn.clicked.connect(self._change_game_dir)
+        game_dir_row.addWidget(self.game_dir_input, 1)
+        game_dir_row.addWidget(game_dir_btn)
+        form2.addRow("默认游戏库:", game_dir_row)
 
-        # 主题选择
+        game_dir_info = QLabel("选择文件或扫描目录时的默认起始路径")
+        game_dir_info.setObjectName("detail-info")
+        form2.addRow("", game_dir_info)
+
+        layout.addLayout(form2)
+        layout.addSpacing(8)
+
+        # 默认搜索引擎
+        section3 = QLabel("搜索")
+        section3.setObjectName("settings-section-title")
+        layout.addWidget(section3)
+
+        form3 = QFormLayout()
+        form3.setSpacing(10)
+
+        self.search_engine_combo = QComboBox()
+        self.search_engine_combo.addItem("百度", "baidu")
+        self.search_engine_combo.addItem("Bing", "bing")
+        self.search_engine_combo.addItem("Google", "google")
+        idx = self.search_engine_combo.findData(self._default_search_engine)
+        if idx >= 0:
+            self.search_engine_combo.setCurrentIndex(idx)
+        self.search_engine_combo.currentIndexChanged.connect(self._on_search_engine_changed)
+        form3.addRow("默认搜索引擎:", self.search_engine_combo)
+
+        layout.addLayout(form3)
+        layout.addStretch()
+        return page
+
+    def _create_appearance_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        # 主题
+        section = QLabel("主题风格")
+        section.setObjectName("settings-section-title")
+        layout.addWidget(section)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+
         self.theme_combo = QComboBox()
         self.theme_combo.addItem("暗夜")
         self.theme_combo.addItem("赛博朋克")
@@ -99,61 +164,63 @@ class SettingsDialog(QDialog):
         self.theme_combo.currentTextChanged.connect(self._on_theme_changed)
         form.addRow("主题风格:", self.theme_combo)
 
-        # 默认搜索引擎
-        self.search_engine_combo = QComboBox()
-        self.search_engine_combo.addItem("百度", "baidu")
-        self.search_engine_combo.addItem("Bing", "bing")
-        self.search_engine_combo.addItem("Google", "google")
-        # 设置当前选项（先设索引再连接信号，避免构造时误触发）
-        idx = self.search_engine_combo.findData(self._default_search_engine)
-        if idx >= 0:
-            self.search_engine_combo.setCurrentIndex(idx)
-        self.search_engine_combo.currentIndexChanged.connect(self._on_search_engine_changed)
-        form.addRow("默认搜索引擎:", self.search_engine_combo)
-
-        # 默认游戏库目录
-        game_dir_row = QHBoxLayout()
-        self.game_dir_input = QLineEdit(self._default_game_dir)
-        self.game_dir_input.setPlaceholderText("未设置")
-        game_dir_btn = QPushButton("浏览")
-        game_dir_btn.setObjectName("file-btn")
-        game_dir_btn.clicked.connect(self._change_game_dir)
-        game_dir_row.addWidget(self.game_dir_input, 1)
-        game_dir_row.addWidget(game_dir_btn)
-        form.addRow("默认游戏库:", game_dir_row)
-
-        game_dir_info = QLabel("选择文件或扫描目录时的默认起始路径")
-        game_dir_info.setObjectName("detail-info")
-        game_dir_info.setStyleSheet("font-size: 11px;")
-        form.addRow("", game_dir_info)
-
         layout.addLayout(form)
+        layout.addSpacing(8)
 
-        # 分隔线
-        div = QFrame()
-        div.setObjectName("divider")
-        div.setFixedHeight(1)
-        layout.addWidget(div)
+        # 隐私
+        section2 = QLabel("隐私")
+        section2.setObjectName("settings-section-title")
+        layout.addWidget(section2)
 
-        # 分类管理区域
-        cat_header = QLabel("分类管理")
-        cat_header.setObjectName("settings-section-title")
-        cat_header.setStyleSheet("font-size: 15px; background: transparent;")
-        layout.addWidget(cat_header)
+        self.privacy_checkbox = QCheckBox("启用隐私模式")
+        self.privacy_checkbox.setChecked(self._privacy_mode)
+        self.privacy_checkbox.toggled.connect(self._on_privacy_toggled)
+        layout.addWidget(self.privacy_checkbox)
 
-        cat_info = QLabel("添加或删除游戏分类。删除分类后，该分类下的游戏将归入「其他」。")
-        cat_info.setObjectName("detail-info")
-        cat_info.setStyleSheet("font-size: 11px; background: transparent;")
-        cat_info.setWordWrap(True)
-        layout.addWidget(cat_info)
+        privacy_info = QLabel("开启后，R18 游戏的封面将被打马赛克，名称将被遮蔽")
+        privacy_info.setObjectName("detail-info")
+        layout.addWidget(privacy_info)
 
-        # 分类列表（滚动区域）
+        layout.addSpacing(8)
+
+        # 窗口
+        section3 = QLabel("窗口")
+        section3.setObjectName("settings-section-title")
+        layout.addWidget(section3)
+
+        self.frameless_checkbox = QCheckBox("启用无边框模式")
+        self.frameless_checkbox.setChecked(self._frameless_mode)
+        self.frameless_checkbox.toggled.connect(self._on_frameless_toggled)
+        layout.addWidget(self.frameless_checkbox)
+
+        frameless_info = QLabel("开启后，窗口标题栏将集成到应用内部，工具栏可拖拽移动窗口")
+        frameless_info.setObjectName("detail-info")
+        layout.addWidget(frameless_info)
+
+        layout.addStretch()
+        return page
+
+    def _create_categories_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        section = QLabel("分类管理")
+        section.setObjectName("settings-section-title")
+        layout.addWidget(section)
+
+        info = QLabel("添加或删除游戏分类。删除分类后，该分类下的游戏将归入「其他」。")
+        info.setObjectName("detail-info")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        # 分类列表
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-        scroll.setMaximumHeight(200)
 
         self._cat_list_widget = QWidget()
         self._cat_list_widget.setStyleSheet("background: transparent;")
@@ -163,7 +230,7 @@ class SettingsDialog(QDialog):
         self._cat_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         scroll.setWidget(self._cat_list_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(scroll, 1)
 
         # 添加分类行
         add_row = QHBoxLayout()
@@ -182,19 +249,39 @@ class SettingsDialog(QDialog):
 
         layout.addLayout(add_row)
 
-        # 底部按钮
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-
-        close_btn = QPushButton("关闭")
-        close_btn.setObjectName("primary-btn")
-        close_btn.clicked.connect(self.accept)
-        btn_row.addWidget(close_btn)
-
-        layout.addLayout(btn_row)
-
-        # 填充分类列表
         self._refresh_cat_list()
+        return page
+
+    def _create_about_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        section = QLabel("关于 GameHub")
+        section.setObjectName("settings-section-title")
+        layout.addWidget(section)
+
+        about_lines = [
+            ("版本:", "v1.0.0"),
+            ("技术栈:", "Python 3.10+ / PyQt6"),
+            ("简介:", "GameHub 是一款本地游戏管理器，支持游戏扫描导入、\n分类管理、封面展示、游玩记录追踪等功能。"),
+        ]
+
+        form = QFormLayout()
+        form.setSpacing(10)
+        for label, value in about_lines:
+            lbl = QLabel(label)
+            lbl.setObjectName("detail-info")
+            val = QLabel(value)
+            val.setObjectName("settings-cat-label")
+            val.setWordWrap(True)
+            val.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            form.addRow(lbl, val)
+
+        layout.addLayout(form)
+        layout.addStretch()
+        return page
 
     def _refresh_cat_list(self):
         """刷新分类列表"""
