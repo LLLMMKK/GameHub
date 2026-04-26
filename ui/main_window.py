@@ -58,10 +58,17 @@ class MainWindow(QMainWindow):
         self._resize_timer.timeout.connect(self._refresh_cards)
 
         self._setup_ui()
-        self._apply_frameless_mode(self.store.frameless_mode)
         self._connect_signals()
         self._setup_shortcuts()
         self._setup_splash_overlay()
+        # 若以无边框模式启动，先用正常窗口短暂 show 一次，
+        # 让 Windows DWM 记录窗口的带边框状态，之后切换才能正确渲染边框
+        if self.store.frameless_mode:
+            self.setWindowOpacity(0.0)
+            self.show()
+            self.hide()
+            self.setWindowOpacity(1.0)
+        self._apply_frameless_mode(self.store.frameless_mode)
         self._refresh()
 
     def _setup_ui(self):
@@ -670,8 +677,11 @@ class MainWindow(QMainWindow):
         if was_maximized:
             self.showNormal()
 
+        # 先隐藏，然后改标志，再显示，确保原生窗口框架正确重建
+        self.hide()
+
         if enabled:
-            self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
             self._main_layout.setContentsMargins(5, 5, 5, 5)
             self._set_resize_mouse_tracking(True)
             QApplication.instance().installEventFilter(self)
@@ -679,7 +689,7 @@ class MainWindow(QMainWindow):
             self._btn_maximize.show()
             self._btn_close.show()
         else:
-            self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.FramelessWindowHint)
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint, False)
             self._main_layout.setContentsMargins(0, 0, 0, 0)
             self._set_resize_mouse_tracking(False)
             QApplication.instance().removeEventFilter(self)
@@ -693,10 +703,12 @@ class MainWindow(QMainWindow):
         if was_maximized:
             self.showMaximized()
         elif was_visible and frame_geo is not None:
-            self.setGeometry(frame_geo)
             self.show()
+            self.setGeometry(frame_geo)
             # show() 后原生窗口可能被系统重新定位，下一轮事件循环强制校准
             QTimer.singleShot(0, lambda: self._clamp_to_screen())
+        elif not was_visible:
+            pass  # 保持隐藏
 
     def _clamp_to_screen(self):
         """确保窗口框架顶部不低于屏幕可用区域顶部"""
