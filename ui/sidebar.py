@@ -81,7 +81,7 @@ class Sidebar(QWidget):
         # 搜索框
         self.search_box = QLineEdit()
         self.search_box.setObjectName("search-box")
-        self.search_box.setPlaceholderText("🔍  搜索游戏...")
+        self.search_box.setPlaceholderText("搜索游戏...")
         self.search_box.textChanged.connect(self._on_search)
         layout.addWidget(self.search_box)
 

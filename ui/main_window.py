@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QScrollArea, QGridLayout,
     QFrame, QFileDialog, QMessageBox, QComboBox, QDialog,
-    QGraphicsOpacityEffect, QApplication
+    QGraphicsOpacityEffect, QApplication, QMenu
 )
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QShortcut, QKeySequence, QFont
@@ -161,8 +161,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._overview_stats = {}
         for key, label in (
             ("shown", "当前"),
-            ("running", "运行中"),
-            ("recent", "最近"),
+            ("played", "已游玩"),
+            ("recent", "有记录"),
             ("hours", "总时长"),
         ):
             stat = QWidget()
@@ -255,32 +255,21 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
         layout.addSpacing(12)
 
-        # 扫描按钮
-        scan_btn = QPushButton("扫描目录")
-        scan_btn.setObjectName("toolbar-btn")
-        scan_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        scan_btn.setToolTip("扫描本地目录自动添加游戏")
-        scan_btn.clicked.connect(self._scan_directory)
-        layout.addWidget(scan_btn)
-
-        layout.addSpacing(8)
-
-        # 手动选择按钮
-        manual_btn = QPushButton("手动选择")
-        manual_btn.setObjectName("toolbar-btn")
-        manual_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        manual_btn.setToolTip("手动选择多个游戏可执行文件")
-        manual_btn.clicked.connect(self._manual_select)
-        layout.addWidget(manual_btn)
-
-        layout.addSpacing(8)
-
-        # 添加游戏按钮
+        # 添加游戏菜单
         add_btn = QPushButton("+ 添加游戏")
         add_btn.setObjectName("add-game-btn")
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        add_btn.setToolTip("手动添加一个游戏")
-        add_btn.clicked.connect(self._add_game)
+        add_btn.setToolTip("添加单个游戏、批量选择或扫描目录")
+        add_menu = QMenu(add_btn)
+        add_menu.setObjectName("add-game-menu")
+        add_single_action = add_menu.addAction("添加单个游戏")
+        add_single_action.triggered.connect(self._add_game)
+        add_multi_action = add_menu.addAction("手动多选")
+        add_multi_action.triggered.connect(self._manual_select)
+        add_menu.addSeparator()
+        scan_action = add_menu.addAction("扫描目录")
+        scan_action.triggered.connect(self._scan_directory)
+        add_btn.clicked.connect(lambda: add_menu.exec(add_btn.mapToGlobal(add_btn.rect().bottomLeft())))
         layout.addWidget(add_btn)
 
         layout.addSpacing(8)
@@ -442,11 +431,11 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         return games
 
     def _update_overview(self, shown_games: list[Game]):
-        running = sum(1 for g in self.store.games if self.launcher.is_running(g.id))
-        recent = sum(1 for g in self.store.games if g.last_played)
-        total_hours = int(sum(g.total_play_time for g in self.store.games) // 3600)
+        played = sum(1 for g in shown_games if g.total_play_time > 0)
+        recent = sum(1 for g in shown_games if g.last_played)
+        total_hours = int(sum(g.total_play_time for g in shown_games) // 3600)
         self._overview_stats["shown"].setText(str(len(shown_games)))
-        self._overview_stats["running"].setText(str(running))
+        self._overview_stats["played"].setText(str(played))
         self._overview_stats["recent"].setText(str(recent))
         self._overview_stats["hours"].setText(f"{total_hours}h")
 

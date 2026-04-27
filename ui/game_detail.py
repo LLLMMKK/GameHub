@@ -144,7 +144,7 @@ class GameDetailPage(QWidget):
         desc_card.setObjectName("desc-card")
         desc_layout = QVBoxLayout(desc_card)
 
-        desc_title = QLabel("📝  游戏介绍")
+        desc_title = QLabel("游戏介绍")
         desc_title.setObjectName("desc-title")
         desc_layout.addWidget(desc_title)
 
@@ -243,19 +243,19 @@ class GameDetailPage(QWidget):
         search_row = QHBoxLayout()
         search_row.setSpacing(10)
 
-        self.search_cover_btn = QPushButton("🔍 搜索封面")
+        self.search_cover_btn = QPushButton("搜索封面")
         self.search_cover_btn.setObjectName("secondary-btn")
         self.search_cover_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.search_cover_btn.clicked.connect(self._search_cover)
         search_row.addWidget(self.search_cover_btn)
 
-        self.search_info_btn = QPushButton("🌐 搜索信息")
+        self.search_info_btn = QPushButton("搜索信息")
         self.search_info_btn.setObjectName("secondary-btn")
         self.search_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.search_info_btn.clicked.connect(self._search_info)
         search_row.addWidget(self.search_info_btn)
 
-        self.search_steam_btn = QPushButton("🎮 Steam")
+        self.search_steam_btn = QPushButton("Steam")
         self.search_steam_btn.setObjectName("secondary-btn")
         self.search_steam_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.search_steam_btn.clicked.connect(self._search_steam)

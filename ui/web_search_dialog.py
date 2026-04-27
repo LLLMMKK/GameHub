@@ -74,9 +74,9 @@ class WebSearchDialog(QDialog):
         img_row1.setSpacing(10)
 
         for label, url in [
-            ("🔍 百度图片", f"https://image.baidu.com/search/index?tn=baiduimage&word={quote(self._game_name + ' 游戏封面')}"),
-            ("🖼 Bing图片", f"https://www.bing.com/images/search?q={quote(self._game_name + ' game cover')}"),
-            ("📸 Google图片", f"https://www.google.com/search?tbm=isch&q={quote(self._game_name + ' game cover')}"),
+            ("百度图片", f"https://image.baidu.com/search/index?tn=baiduimage&word={quote(self._game_name + ' 游戏封面')}"),
+            ("Bing 图片", f"https://www.bing.com/images/search?q={quote(self._game_name + ' game cover')}"),
+            ("Google 图片", f"https://www.google.com/search?tbm=isch&q={quote(self._game_name + ' game cover')}"),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
@@ -144,10 +144,10 @@ class WebSearchDialog(QDialog):
         txt_row1.setSpacing(10)
 
         for label, url in [
-            ("🌐 百度", f"https://www.baidu.com/s?wd={quote(self._game_name + ' 游戏 介绍')}"),
-            ("🌐 Bing", f"https://www.bing.com/search?q={quote(self._game_name + ' game intro')}"),
-            ("🌐 Google", f"https://www.google.com/search?q={quote(self._game_name + ' game wiki')}"),
-            ("📖 维基百科", f"https://zh.wikipedia.org/wiki/Special:Search/{quote(self._game_name)}"),
+            ("百度", f"https://www.baidu.com/s?wd={quote(self._game_name + ' 游戏 介绍')}"),
+            ("Bing", f"https://www.bing.com/search?q={quote(self._game_name + ' game intro')}"),
+            ("Google", f"https://www.google.com/search?q={quote(self._game_name + ' game wiki')}"),
+            ("维基百科", f"https://zh.wikipedia.org/wiki/Special:Search/{quote(self._game_name)}"),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
@@ -162,9 +162,9 @@ class WebSearchDialog(QDialog):
         txt_row2.setSpacing(10)
 
         for label, url in [
-            ("🎮 Steam", f"https://store.steampowered.com/search/?term={quote(self._game_name)}"),
-            ("📰 游民星空", f"https://so.gamersky.com/all?keyword={quote(self._game_name)}"),
-            ("📕 百度百科", f"https://baike.baidu.com/item/{quote(self._game_name)}"),
+            ("Steam", f"https://store.steampowered.com/search/?term={quote(self._game_name)}"),
+            ("游民星空", f"https://so.gamersky.com/all?keyword={quote(self._game_name)}"),
+            ("百度百科", f"https://baike.baidu.com/item/{quote(self._game_name)}"),
         ]:
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")

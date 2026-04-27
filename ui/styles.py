@@ -326,7 +326,7 @@ QMainWindow {{
     font-size: 22px;
     font-weight: bold;
     padding: 24px 20px 8px 20px;
-    letter-spacing: 1px;
+    letter-spacing: 0px;
 }}
 
 #sidebar-subtitle {{
@@ -340,7 +340,7 @@ QMainWindow {{
     font-size: 11px;
     font-weight: bold;
     padding: 2px 18px;
-    letter-spacing: 2px;
+    letter-spacing: 0px;
     background: transparent;
 }}
 
@@ -454,6 +454,29 @@ QMainWindow {{
     border-color: {green_hover};
 }}
 
+#add-game-menu {{
+    background-color: {bg_context};
+    border: 1px solid {border_context};
+    border-radius: 8px;
+    padding: 6px;
+}}
+
+#add-game-menu::item {{
+    color: {text_primary};
+    padding: 8px 28px;
+    border-radius: 5px;
+}}
+
+#add-game-menu::item:selected {{
+    background-color: {bg_context_item};
+}}
+
+#add-game-menu::separator {{
+    height: 1px;
+    background-color: {border};
+    margin: 5px 6px;
+}}
+
 /* 无边框窗口控制按钮 */
 #win-control-btn {{
     background-color: transparent;
@@ -514,14 +537,14 @@ QMainWindow {{
 #library-overview {{
     background-color: {bg_overlay};
     border: 1px solid {border};
-    border-radius: 10px;
+    border-radius: 8px;
 }}
 
 #overview-kicker {{
     color: {accent};
     font-size: 10px;
     font-weight: bold;
-    letter-spacing: 2px;
+    letter-spacing: 0px;
     background: transparent;
 }}
 
@@ -600,7 +623,7 @@ QMainWindow {{
 /* ===== 游戏卡片 ===== */
 #game-card {{
     background-color: {bg_card};
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid {border};
     padding: 24px 20px 8px 20px;
 }}
@@ -665,7 +688,7 @@ QMainWindow {{
 #card-play-btn {{
     background-color: {green};
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     color: {text_on_accent};
     font-weight: bold;
     font-size: 11px;
@@ -720,7 +743,7 @@ QMainWindow {{
 QPushButton#play-btn {{
     background-color: {play_bg};
     border: 1px solid {play_border};
-    border-radius: 10px;
+    border-radius: 8px;
     color: {play_text};
     font-weight: bold;
     font-size: 15px;
@@ -1009,7 +1032,7 @@ QPushButton#danger-btn:hover {{
 QLabel#section-label {{
     color: {text_muted};
     font-size: 11px;
-    letter-spacing: 1px;
+    letter-spacing: 0px;
     padding-bottom: 4px;
 }}
 
@@ -1021,7 +1044,7 @@ QLabel#section-label {{
 
 #detail-title {{
     color: {text_primary};
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     background: transparent;
 }}
@@ -1070,14 +1093,14 @@ QLabel#section-label {{
 
 #detail-cover {{
     background-color: {bg_card};
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid {border};
 }}
 
 #desc-card {{
     background-color: {bg_overlay};
     border: 1px solid {border};
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 20px;
 }}
 
@@ -1113,7 +1136,7 @@ QLabel#section-label {{
     color: {text_muted};
     font-size: 11px;
     font-weight: bold;
-    letter-spacing: 1px;
+    letter-spacing: 0px;
     background: transparent;
 }}
 
@@ -1131,7 +1154,7 @@ QLabel#section-label {{
 #empty-state {{
     background-color: {bg_overlay};
     border: 1px dashed {border_btn_secondary};
-    border-radius: 12px;
+    border-radius: 8px;
 }}
 
 #empty-mark {{
