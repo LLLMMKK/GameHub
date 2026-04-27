@@ -510,6 +510,54 @@ QMainWindow {{
     font-size: 12px;
 }}
 
+/* 库概览 */
+#library-overview {{
+    background-color: {bg_overlay};
+    border: 1px solid {border};
+    border-radius: 10px;
+}}
+
+#overview-kicker {{
+    color: {accent};
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    background: transparent;
+}}
+
+#overview-title {{
+    color: {text_primary};
+    font-size: 24px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#overview-subtitle {{
+    color: {text_muted};
+    font-size: 12px;
+    background: transparent;
+}}
+
+#overview-stat {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    min-width: 82px;
+}}
+
+#overview-stat-value {{
+    color: {text_primary};
+    font-size: 20px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#overview-stat-label {{
+    color: {text_muted};
+    font-size: 11px;
+    background: transparent;
+}}
+
 /* 返回按钮 */
 #back-btn {{
     background: transparent;
@@ -1078,6 +1126,58 @@ QLabel#section-label {{
 #empty-icon {{
     color: {empty_icon};
     font-size: 64px;
+}}
+
+#empty-state {{
+    background-color: {bg_overlay};
+    border: 1px dashed {border_btn_secondary};
+    border-radius: 12px;
+}}
+
+#empty-mark {{
+    color: {accent};
+    font-size: 44px;
+    background: transparent;
+}}
+
+#empty-title {{
+    color: {text_primary};
+    font-size: 20px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#empty-subtitle {{
+    color: {text_muted};
+    font-size: 13px;
+    background: transparent;
+}}
+
+#empty-primary-btn {{
+    background-color: {play_bg};
+    border: 1px solid {play_border};
+    border-radius: 8px;
+    color: {play_text};
+    font-weight: bold;
+    padding: 10px 18px;
+}}
+
+#empty-primary-btn:hover {{
+    background-color: {play_hover};
+}}
+
+#empty-secondary-btn {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    color: {text_btn_secondary};
+    padding: 10px 18px;
+}}
+
+#empty-secondary-btn:hover {{
+    background-color: {bg_hover};
+    border-color: {accent};
+    color: {text_primary};
 }}
 
 /* 分隔线 */

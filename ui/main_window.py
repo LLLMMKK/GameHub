@@ -113,17 +113,19 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.grid_layout.setSpacing(16)
         self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        # 库概览
+        self.overview_panel = self._create_overview_panel()
+        self.grid_layout.addWidget(self.overview_panel)
+
         # 卡片网格
         self.card_grid = QGridLayout()
         self.card_grid.setSpacing(16)
         self.grid_layout.addLayout(self.card_grid)
 
         # 空状态提示
-        self.empty_label = QLabel("还没有游戏\n点击上方「添加游戏」开始吧")
-        self.empty_label.setObjectName("empty-hint")
-        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.grid_layout.addWidget(self.empty_label)
-        self.empty_label.hide()
+        self.empty_state = self._create_empty_state()
+        self.grid_layout.addWidget(self.empty_state)
+        self.empty_state.hide()
 
         self.scroll_area.setWidget(self.grid_container)
         content_layout.addWidget(self.scroll_area, 1)
@@ -134,6 +136,92 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.detail_page = GameDetailPage()
         self.detail_page.hide()
         content_layout.addWidget(self.detail_page, 1)
+
+    def _create_overview_panel(self) -> QWidget:
+        panel = QWidget()
+        panel.setObjectName("library-overview")
+        panel.setMinimumHeight(116)
+        layout = QHBoxLayout(panel)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(18)
+
+        copy = QVBoxLayout()
+        copy.setSpacing(4)
+        kicker = QLabel("LIBRARY")
+        kicker.setObjectName("overview-kicker")
+        self.overview_title = QLabel("全部游戏")
+        self.overview_title.setObjectName("overview-title")
+        self.overview_subtitle = QLabel("整理、启动和回顾你的本地游戏库")
+        self.overview_subtitle.setObjectName("overview-subtitle")
+        copy.addWidget(kicker)
+        copy.addWidget(self.overview_title)
+        copy.addWidget(self.overview_subtitle)
+        layout.addLayout(copy, 1)
+
+        self._overview_stats = {}
+        for key, label in (
+            ("shown", "当前"),
+            ("running", "运行中"),
+            ("recent", "最近"),
+            ("hours", "总时长"),
+        ):
+            stat = QWidget()
+            stat.setObjectName("overview-stat")
+            stat_layout = QVBoxLayout(stat)
+            stat_layout.setContentsMargins(14, 10, 14, 10)
+            stat_layout.setSpacing(2)
+            value = QLabel("0")
+            value.setObjectName("overview-stat-value")
+            caption = QLabel(label)
+            caption.setObjectName("overview-stat-label")
+            stat_layout.addWidget(value)
+            stat_layout.addWidget(caption)
+            layout.addWidget(stat)
+            self._overview_stats[key] = value
+
+        return panel
+
+    def _create_empty_state(self) -> QWidget:
+        empty = QWidget()
+        empty.setObjectName("empty-state")
+        layout = QVBoxLayout(empty)
+        layout.setContentsMargins(24, 46, 24, 46)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        mark = QLabel("◇")
+        mark.setObjectName("empty-mark")
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(mark)
+
+        title = QLabel("还没有游戏")
+        title.setObjectName("empty-title")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        subtitle = QLabel("添加一个可执行文件，或者扫描你的游戏目录。")
+        subtitle.setObjectName("empty-subtitle")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(subtitle)
+
+        action_row = QHBoxLayout()
+        action_row.setSpacing(10)
+        action_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        add_btn = QPushButton("+ 添加游戏")
+        add_btn.setObjectName("empty-primary-btn")
+        add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_btn.clicked.connect(self._add_game)
+        action_row.addWidget(add_btn)
+
+        scan_btn = QPushButton("扫描目录")
+        scan_btn.setObjectName("empty-secondary-btn")
+        scan_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        scan_btn.clicked.connect(self._scan_directory)
+        action_row.addWidget(scan_btn)
+
+        layout.addLayout(action_row)
+        return empty
 
     def _create_toolbar(self) -> QWidget:
         toolbar = FramelessToolbar(lambda: self.store.frameless_mode)
@@ -307,13 +395,14 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self.category_title.setText(self._current_category)
 
         self.game_count_label.setText(f"({len(games)})")
+        self._update_overview(games)
 
         # 空状态
         if not games:
-            self.empty_label.show()
+            self.empty_state.show()
             return
 
-        self.empty_label.hide()
+        self.empty_state.hide()
 
         for i, game in enumerate(games):
             card = GameCard(game)
@@ -351,6 +440,28 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             reverse = self._sort_mode == "last_played"
             games.sort(key=key_fn, reverse=reverse)
         return games
+
+    def _update_overview(self, shown_games: list[Game]):
+        running = sum(1 for g in self.store.games if self.launcher.is_running(g.id))
+        recent = sum(1 for g in self.store.games if g.last_played)
+        total_hours = int(sum(g.total_play_time for g in self.store.games) // 3600)
+        self._overview_stats["shown"].setText(str(len(shown_games)))
+        self._overview_stats["running"].setText(str(running))
+        self._overview_stats["recent"].setText(str(recent))
+        self._overview_stats["hours"].setText(f"{total_hours}h")
+
+        if self._search_query:
+            self.overview_title.setText(f"搜索「{self._search_query}」")
+            self.overview_subtitle.setText("从当前游戏库中筛选匹配项")
+        elif self._current_category == "全部":
+            self.overview_title.setText("全部游戏")
+            self.overview_subtitle.setText("整理、启动和回顾你的本地游戏库")
+        elif self._current_category == "最近游玩":
+            self.overview_title.setText("最近游玩")
+            self.overview_subtitle.setText("快速回到近期打开过的游戏")
+        else:
+            self.overview_title.setText(self._current_category)
+            self.overview_subtitle.setText("当前分类下的游戏集合")
 
     def _on_sort_changed(self, index: int):
         self._sort_mode = _SORT_MODES[index]
