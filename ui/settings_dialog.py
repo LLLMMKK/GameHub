@@ -5,8 +5,6 @@ from PyQt6.QtWidgets import (
     QWidget, QScrollArea, QFrame, QComboBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from ui.scan_result_dialog import _DELETE_BTN_STYLE
-
 
 # 不可删除的分类
 FIXED_CATEGORIES = {"全部", "最近游玩"}
@@ -312,7 +310,7 @@ class SettingsDialog(QDialog):
                 del_btn = QPushButton("删除")
                 del_btn.setFixedSize(52, 26)
                 del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                del_btn.setStyleSheet(_DELETE_BTN_STYLE)
+                del_btn.setObjectName("small-delete-btn")
                 del_btn.clicked.connect(lambda checked, c=cat: self._remove_category(c))
                 row_layout.addWidget(del_btn)
 

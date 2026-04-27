@@ -78,7 +78,7 @@ class AddGameDialog(QDialog):
         self.cover_preview = QLabel()
         self.cover_preview.setFixedSize(80, 100)
         self.cover_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cover_preview.setStyleSheet("background-color: #2a3f5f; border-radius: 4px;")
+        self.cover_preview.setObjectName("cover-preview-box")
         self._update_cover_preview()
 
         cover_btns = QVBoxLayout()
@@ -104,7 +104,7 @@ class AddGameDialog(QDialog):
 
         # R18 标记
         self.r18_checkbox = QCheckBox("标记为 R18 游戏")
-        self.r18_checkbox.setStyleSheet("color: #ff4444; font-size: 12px;")
+        self.r18_checkbox.setObjectName("r18-checkbox")
         form.addRow("", self.r18_checkbox)
 
         layout.addLayout(form)

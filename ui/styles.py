@@ -281,8 +281,20 @@ _COLORS = {
         "file_btn_color": "#95a5a6",
         "empty_icon": "#d0d5dc",
         "text_on_accent": "#ffffff",
+        "play_bg": "#e8f5ee",
+        "play_hover": "#d9efe4",
+        "play_pressed": "#c9e7d6",
+        "play_text": "#5a6a7a",
+        "play_border": "#c8ddd2",
     },
 }
+
+for _theme_colors in _COLORS.values():
+    _theme_colors.setdefault("play_bg", _theme_colors["green"])
+    _theme_colors.setdefault("play_hover", _theme_colors["green_hover"])
+    _theme_colors.setdefault("play_pressed", _theme_colors["green_pressed"])
+    _theme_colors.setdefault("play_text", _theme_colors["text_on_accent"])
+    _theme_colors.setdefault("play_border", _theme_colors["green_border"])
 
 # ═══════════════════════════════════════════════════
 # QSS 模板
@@ -321,6 +333,22 @@ QMainWindow {{
     color: {text_muted};
     font-size: 11px;
     padding: 0px 20px 16px 20px;
+}}
+
+#sidebar-section-label {{
+    color: {text_muted};
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 18px;
+    letter-spacing: 2px;
+    background: transparent;
+}}
+
+#sidebar-version {{
+    color: {text_muted};
+    font-size: 10px;
+    padding: 8px 18px;
+    background: transparent;
 }}
 
 /* 搜索框 */
@@ -641,29 +669,31 @@ QMainWindow {{
 }}
 
 /* 详情面板播放按钮 */
-#play-btn {{
-    background-color: {green};
-    border: none;
+QPushButton#play-btn {{
+    background-color: {play_bg};
+    border: 1px solid {play_border};
     border-radius: 10px;
-    color: {text_on_accent};
+    color: {play_text};
     font-weight: bold;
     font-size: 15px;
     padding: 12px 24px;
 }}
 
-#play-btn:hover {{
-    background-color: {green_hover};
+QPushButton#play-btn:hover {{
+    background-color: {play_hover};
 }}
 
-#play-btn:pressed {{
-    background-color: {green_pressed};
+QPushButton#play-btn:pressed {{
+    background-color: {play_pressed};
 }}
 
-#play-btn[running="true"] {{
+QPushButton#play-btn[running="true"] {{
     background-color: {red};
+    border-color: {red_dark};
+    color: {text_on_accent};
 }}
 
-#play-btn[running="true"]:hover {{
+QPushButton#play-btn[running="true"]:hover {{
     background-color: {red_hover};
 }}
 
@@ -720,6 +750,126 @@ QDialog {{
     font-size: 22px;
     font-weight: bold;
     padding-bottom: 16px;
+}}
+
+#dialog-hint {{
+    color: {text_muted};
+    font-size: 12px;
+    background: transparent;
+}}
+
+#dialog-muted {{
+    color: {text_dim};
+    font-size: 12px;
+    background: transparent;
+}}
+
+#dialog-subtle {{
+    color: {text_muted};
+    font-size: 11px;
+    background: transparent;
+}}
+
+#dialog-status {{
+    color: {accent};
+    font-size: 11px;
+    background: transparent;
+}}
+
+#search-engine-btn {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    padding: 9px 14px;
+    color: {text_btn_secondary};
+    font-size: 12px;
+}}
+
+#search-engine-btn:hover {{
+    background-color: {bg_hover};
+    border-color: {accent};
+    color: {text_primary};
+}}
+
+#cover-preview-box, #crop-preview-box {{
+    background-color: {bg_card};
+    border: 1px solid {border};
+    border-radius: 8px;
+    color: {text_muted};
+    font-size: 11px;
+}}
+
+#r18-checkbox {{
+    color: {red};
+    font-size: 12px;
+    background: transparent;
+}}
+
+#duplicate-path-tag {{
+    color: {red};
+    font-size: 10px;
+    background: transparent;
+    border: 1px solid {red_dark};
+    border-radius: 3px;
+    padding: 1px 5px;
+}}
+
+#duplicate-name-tag {{
+    color: {accent};
+    font-size: 10px;
+    background: transparent;
+    border: 1px solid {border_context};
+    border-radius: 3px;
+    padding: 1px 5px;
+}}
+
+#scan-result-row {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+}}
+
+#scan-result-row:hover {{
+    border-color: {accent};
+}}
+
+#scan-result-row[duplicate="path"] {{
+    background-color: {bg_overlay};
+    border-color: {red_dark};
+}}
+
+#scan-result-row[duplicate="name"] {{
+    background-color: {bg_overlay};
+    border-color: {border_context};
+}}
+
+#scan-game-name {{
+    color: {text_primary};
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#scan-game-name[duplicate="path"] {{
+    color: {text_muted};
+}}
+
+#scan-game-name[duplicate="name"] {{
+    color: {accent};
+}}
+
+#small-delete-btn {{
+    background-color: {bg_overlay};
+    border: 1px solid {red_dark};
+    border-radius: 4px;
+    color: {red};
+    font-size: 11px;
+}}
+
+#small-delete-btn:hover {{
+    background-color: {bg_hover};
+    border-color: {red};
+    color: {red_hover};
 }}
 
 /* 输入框 */

@@ -38,9 +38,17 @@ def apply_mosaic(pixmap: QPixmap, block_size=12) -> QPixmap:
     return result
 
 
-@lru_cache(maxsize=256)
 def _load_cover_pixmap(path: str) -> QPixmap:
-    """缓存封面文件到 QPixmap，避免重复磁盘读取"""
+    """缓存封面文件到 QPixmap，文件变化后自动失效。"""
+    try:
+        stat = os.stat(path)
+        return _load_cover_pixmap_cached(path, stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return QPixmap(path)
+
+
+@lru_cache(maxsize=256)
+def _load_cover_pixmap_cached(path: str, mtime_ns: int, size: int) -> QPixmap:
     return QPixmap(path)
 
 

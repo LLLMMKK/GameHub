@@ -8,23 +8,6 @@ from PyQt6.QtCore import Qt
 
 from core.game_model import Game
 
-# 删除按钮通用样式
-_DELETE_BTN_STYLE = """
-    QPushButton {
-        background-color: #3a1a1a;
-        border: 1px solid #5a2a2a;
-        border-radius: 4px;
-        color: #e07070;
-        font-size: 11px;
-    }
-    QPushButton:hover {
-        background-color: #5a2a2a;
-        border-color: #c0392b;
-        color: #ff8888;
-    }
-"""
-
-
 class ScanResultDialog(QDialog):
     """扫描结果对话框"""
 
@@ -56,7 +39,7 @@ class ScanResultDialog(QDialog):
         layout.addWidget(title)
 
         hint = QLabel("确认要添加的游戏，可以移除不需要的条目")
-        hint.setStyleSheet("color: #4a6080; font-size: 12px;")
+        hint.setObjectName("dialog-hint")
         layout.addWidget(hint)
 
         # 滚动列表
@@ -80,7 +63,7 @@ class ScanResultDialog(QDialog):
         btn_row = QHBoxLayout()
 
         self._count_label = QLabel(f"已选 {len(self._games)} 项")
-        self._count_label.setStyleSheet("color: #8fa3b8; font-size: 12px;")
+        self._count_label.setObjectName("dialog-muted")
         btn_row.addWidget(self._count_label)
 
         btn_row.addStretch()
@@ -130,46 +113,37 @@ class ScanResultDialog(QDialog):
         norm_path = os.path.normpath(game.exe_path).lower()
         path_exists = norm_path in self._existing_paths
         name_exists = not path_exists and game.name.lower() in self._existing_names
+        duplicate_state = "path" if path_exists else ("name" if name_exists else "none")
 
         row = QWidget()
-        border_color = "#5a2a2a" if path_exists else ("#4a3a1a" if name_exists else "#1e2d3d")
-        bg_color = "#1e1418" if path_exists else ("#1a1814" if name_exists else "#141c28")
-        row.setStyleSheet(f"""
-            QWidget {{
-                background-color: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 8px;
-            }}
-            QWidget:hover {{
-                border-color: #2a4a6a;
-            }}
-        """)
+        row.setObjectName("scan-result-row")
+        row.setProperty("duplicate", duplicate_state)
 
         layout = QHBoxLayout(row)
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(12)
 
         # 游戏名称
-        name_color = "#606060" if path_exists else ("#c0a060" if name_exists else "#e8edf3")
         name_label = QLabel(game.name)
-        name_label.setStyleSheet(f"color: {name_color}; font-size: 14px; font-weight: bold; background: transparent;")
+        name_label.setObjectName("scan-game-name")
+        name_label.setProperty("duplicate", duplicate_state)
         name_label.setMinimumWidth(120)
         layout.addWidget(name_label)
 
         # 重复标记
         if path_exists:
             dup_label = QLabel("已添加")
-            dup_label.setStyleSheet("color: #a05050; font-size: 10px; background: transparent; border: 1px solid #5a2a2a; border-radius: 3px; padding: 1px 5px;")
+            dup_label.setObjectName("duplicate-path-tag")
             layout.addWidget(dup_label)
         elif name_exists:
             dup_label = QLabel("同名")
-            dup_label.setStyleSheet("color: #a08040; font-size: 10px; background: transparent; border: 1px solid #4a3a1a; border-radius: 3px; padding: 1px 5px;")
+            dup_label.setObjectName("duplicate-name-tag")
             layout.addWidget(dup_label)
 
         # 目录路径
         dir_path = os.path.dirname(game.exe_path) or game.exe_path
         path_label = QLabel(dir_path)
-        path_label.setStyleSheet("color: #4a6080; font-size: 11px; background: transparent;")
+        path_label.setObjectName("dialog-subtle")
         path_label.setWordWrap(True)
         path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(path_label, 1)
@@ -178,7 +152,7 @@ class ScanResultDialog(QDialog):
         remove_btn = QPushButton("移除")
         remove_btn.setFixedSize(52, 26)
         remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        remove_btn.setStyleSheet(_DELETE_BTN_STYLE)
+        remove_btn.setObjectName("small-delete-btn")
         remove_btn.clicked.connect(lambda checked, idx=index: self._remove_item(idx))
         layout.addWidget(remove_btn)
 

@@ -62,7 +62,7 @@ class GameScanner:
     def scan_directory(self, directory: str) -> list[Game]:
         """扫描目录，返回找到的游戏列表"""
         games = []
-        seen_names = set()
+        seen_paths = set()
 
         try:
             for root, dirs, files in os.walk(directory):
@@ -70,18 +70,23 @@ class GameScanner:
                 dirs[:] = [d for d in dirs if not self._should_skip_dir(d)]
 
                 for filename in files:
-                    if not filename.lower().endswith(".exe"):
-                        continue
-
                     exe_path = os.path.join(root, filename)
-
-                    # 过小的 exe 很可能不是游戏（辅助程序通常很小）
-                    try:
-                        fsize = os.path.getsize(exe_path)
-                        if fsize < 100 * 1024:  # 小于 100KB 跳过
-                            continue
-                    except OSError:
+                    if not is_valid_exe(exe_path):
                         continue
+
+                    norm_path = os.path.normpath(exe_path).lower()
+                    if norm_path in seen_paths:
+                        continue
+                    seen_paths.add(norm_path)
+
+                    # 过小的 exe 很可能不是游戏（辅助程序通常很小）；脚本启动器不按体积过滤。
+                    if filename.lower().endswith(".exe"):
+                        try:
+                            fsize = os.path.getsize(exe_path)
+                            if fsize < 100 * 1024:  # 小于 100KB 跳过
+                                continue
+                        except OSError:
+                            continue
 
                     # 同名目录启发：如果 exe 文件名与所在目录名相同，更可能是游戏主程序
                     dir_name = os.path.basename(root)
@@ -92,11 +97,6 @@ class GameScanner:
                         continue
 
                     name = get_exe_name(exe_path)
-
-                    # 去重
-                    if name.lower() in seen_names:
-                        continue
-                    seen_names.add(name.lower())
 
                     game = Game(
                         name=name,

@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QRectF, QSizeF, QPointF, pyqtSignal
 from PyQt6.QtGui import (
     QPixmap, QPainter, QPen, QColor, QPainterPath
 )
+from ui.game_card import fit_cover_pixmap
 
 
 # 封面宽高比 3:4
@@ -276,7 +277,7 @@ class CoverCropDialog(QDialog):
 
         # 提示
         hint = QLabel("拖动裁剪框移动位置，拖动四角调整大小（自动保持3:4封面比例）")
-        hint.setStyleSheet("color: #8fa3b8; font-size: 12px;")
+        hint.setObjectName("dialog-hint")
         layout.addWidget(hint)
 
         # 裁剪区域
@@ -295,19 +296,19 @@ class CoverCropDialog(QDialog):
         preview_row.setSpacing(16)
 
         preview_label = QLabel("裁剪预览:")
-        preview_label.setStyleSheet("color: #8fa3b8; font-size: 13px;")
+        preview_label.setObjectName("dialog-muted")
         preview_row.addWidget(preview_label)
 
         self._preview = QLabel()
         self._preview.setFixedSize(90, 120)
         self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._preview.setStyleSheet("background-color: #141c28; border-radius: 6px;")
+        self._preview.setObjectName("crop-preview-box")
         preview_row.addWidget(self._preview)
 
         preview_row.addStretch()
 
         size_label = QLabel()
-        size_label.setStyleSheet("color: #4a6080; font-size: 11px;")
+        size_label.setObjectName("dialog-subtle")
         self._size_label = size_label
         preview_row.addWidget(size_label)
 
@@ -336,9 +337,7 @@ class CoverCropDialog(QDialog):
 
     def _update_preview(self):
         cropped = self._crop_widget.get_cropped_pixmap()
-        scaled = cropped.scaled(90, 120, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                Qt.TransformationMode.SmoothTransformation)
-        self._preview.setPixmap(scaled)
+        self._preview.setPixmap(fit_cover_pixmap(cropped, 90, 120))
         self._size_label.setText(f"{cropped.width()} x {cropped.height()} px")
 
     def _confirm(self):

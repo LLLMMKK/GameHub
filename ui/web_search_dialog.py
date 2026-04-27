@@ -10,16 +10,6 @@ from PyQt6.QtGui import QPixmap
 
 from utils.file_utils import save_cover
 
-
-_SEARCH_ENGINE_BTN_STYLE = """
-    #search-engine-btn {
-        background-color: #141c28; border: 1px solid #1e2d3d;
-        border-radius: 8px; padding: 9px 14px; color: #8fa3b8; font-size: 12px;
-    }
-    #search-engine-btn:hover { background-color: #1a2a3e; border-color: #3a7bd5; color: #ffffff; }
-"""
-
-
 class ImageDownloader(QThread):
     """后台下载图片线程"""
     finished = pyqtSignal(bool, bytes)  # success, data
@@ -56,6 +46,7 @@ class WebSearchDialog(QDialog):
         self._downloader = None
         self._cached_pixmap = None  # 缓存已下载的图片
         self._cached_url = ""
+        self._close_after_download = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -73,11 +64,10 @@ class WebSearchDialog(QDialog):
         # === 图片搜索 ===
         img_header = QLabel("图片搜索")
         img_header.setObjectName("dialog-title")
-        img_header.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(img_header)
 
         hint1 = QLabel("点击下方按钮在浏览器中搜索图片，然后回来粘贴图片链接")
-        hint1.setStyleSheet("color: #4a6080; font-size: 12px;")
+        hint1.setObjectName("dialog-hint")
         layout.addWidget(hint1)
 
         img_row1 = QHBoxLayout()
@@ -91,7 +81,6 @@ class WebSearchDialog(QDialog):
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet(_SEARCH_ENGINE_BTN_STYLE)
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             img_row1.addWidget(btn)
 
@@ -101,7 +90,6 @@ class WebSearchDialog(QDialog):
         url_row = QHBoxLayout()
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("粘贴图片 URL (如 https://...)")
-        self.url_input.setStyleSheet("font-size: 12px;")
         url_row.addWidget(self.url_input, 1)
 
         preview_btn = QPushButton("预览")
@@ -122,7 +110,7 @@ class WebSearchDialog(QDialog):
         self.cover_preview = QLabel()
         self.cover_preview.setFixedSize(160, 210)
         self.cover_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cover_preview.setStyleSheet("background-color: #141c28; border-radius: 8px; color: #4a6080; font-size: 11px;")
+        self.cover_preview.setObjectName("cover-preview-box")
         self.cover_preview.setText("图片预览区")
         self.cover_preview.hide()
 
@@ -134,7 +122,7 @@ class WebSearchDialog(QDialog):
 
         # 下载状态
         self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #3a7bd5; font-size: 11px;")
+        self._status_label.setObjectName("dialog-status")
         layout.addWidget(self._status_label)
 
         # 分隔线
@@ -146,11 +134,10 @@ class WebSearchDialog(QDialog):
         # === 文本搜索 ===
         txt_header = QLabel("文本搜索")
         txt_header.setObjectName("dialog-title")
-        txt_header.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(txt_header)
 
         hint2 = QLabel("点击下方按钮在浏览器中搜索，然后回来粘贴游戏介绍文本")
-        hint2.setStyleSheet("color: #4a6080; font-size: 12px;")
+        hint2.setObjectName("dialog-hint")
         layout.addWidget(hint2)
 
         txt_row1 = QHBoxLayout()
@@ -165,13 +152,6 @@ class WebSearchDialog(QDialog):
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet("""
-                #search-engine-btn {
-                    background-color: #141c28; border: 1px solid #1e2d3d;
-                    border-radius: 8px; padding: 9px 14px; color: #8fa3b8; font-size: 12px;
-                }
-                #search-engine-btn:hover { background-color: #1a2a3e; border-color: #3a7bd5; color: #ffffff; }
-            """)
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             txt_row1.addWidget(btn)
 
@@ -189,13 +169,6 @@ class WebSearchDialog(QDialog):
             btn = QPushButton(label)
             btn.setObjectName("search-engine-btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet("""
-                #search-engine-btn {
-                    background-color: #141c28; border: 1px solid #1e2d3d;
-                    border-radius: 8px; padding: 9px 14px; color: #8fa3b8; font-size: 12px;
-                }
-                #search-engine-btn:hover { background-color: #1a2a3e; border-color: #3a7bd5; color: #ffffff; }
-            """)
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             txt_row2.addWidget(btn)
 
@@ -257,7 +230,9 @@ class WebSearchDialog(QDialog):
 
     def _download_and_show(self, url: str, preview_only: bool = False):
         if self._downloader and self._downloader.isRunning():
-            self._downloader.quit()
+            self._status_label.setText("已有图片正在加载，请稍候...")
+            return
+        self._close_after_download = False
         self._downloader = ImageDownloader(url)
         self._downloader.finished.connect(lambda ok, data, source_url=url: self._on_image_downloaded(ok, data, preview_only, source_url))
         self._downloader.start()
@@ -266,17 +241,28 @@ class WebSearchDialog(QDialog):
         self._status_label.setText("")
         if not ok or not data:
             self._status_label.setText("下载失败，请检查 URL")
+            if self._close_after_download:
+                self._close_after_download = False
+                self.close()
             return
 
         pixmap = QPixmap()
         pixmap.loadFromData(data)
         if pixmap.isNull():
             self._status_label.setText("无法识别该图片")
+            if self._close_after_download:
+                self._close_after_download = False
+                self.close()
             return
 
         # 缓存图片
         self._cached_pixmap = pixmap
         self._cached_url = source_url
+
+        if self._close_after_download:
+            self._close_after_download = False
+            self.close()
+            return
 
         if preview_only:
             scaled = pixmap.scaled(160, 210, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
@@ -324,6 +310,8 @@ class WebSearchDialog(QDialog):
 
     def closeEvent(self, event):
         if self._downloader and self._downloader.isRunning():
-            self._downloader.quit()
-            self._downloader.wait(3000)
+            self._close_after_download = True
+            self._status_label.setText("图片下载中，完成后将自动关闭...")
+            event.ignore()
+            return
         super().closeEvent(event)

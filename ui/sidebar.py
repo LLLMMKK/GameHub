@@ -8,9 +8,9 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 # 分类图标映射
 CATEGORY_ICONS = {
-    "全部": "🎮", "最近游玩": "🕐", "动作": "⚔", "策略": "🧠",
-    "RPG": "🗡", "冒险": "🗺", "模拟": "🏗", "体育": "⚽",
-    "竞速": "🏎", "休闲": "☕", "其他": "📁",
+    "全部": "●", "最近游玩": "◆", "动作": "▲", "策略": "◇",
+    "RPG": "✦", "冒险": "◈", "模拟": "□", "体育": "○",
+    "竞速": "▶", "休闲": "◌", "Galgame": "☆", "其他": "▣",
 }
 
 
@@ -28,7 +28,7 @@ class CategoryButton(QPushButton):
         self.clicked.connect(lambda: self.clicked_category.emit(text))
 
     def _update_text(self, text: str, count: int = 0):
-        icon = CATEGORY_ICONS.get(text, "📂")
+        icon = CATEGORY_ICONS.get(text, "▣")
         display = f"  {icon}  {text}"
         if count > 0:
             display += f"  ({count})"
@@ -97,10 +97,7 @@ class Sidebar(QWidget):
 
         # 分类标签
         cat_header = QLabel("  分  类")
-        cat_header.setStyleSheet(
-            "color: #3d5a80; font-size: 11px; font-weight: bold; "
-            "padding: 2px 18px; letter-spacing: 3px; background: transparent;"
-        )
+        cat_header.setObjectName("sidebar-section-label")
         layout.addWidget(cat_header)
 
         layout.addSpacing(4)
@@ -125,7 +122,7 @@ class Sidebar(QWidget):
         # 底部版本
         layout.addStretch()
         version = QLabel("  v1.0.0")
-        version.setStyleSheet("color: #3d5a80; font-size: 10px; padding: 8px 18px; background: transparent;")
+        version.setObjectName("sidebar-version")
         layout.addWidget(version)
 
     def set_categories(self, categories: list[str], counts: dict[str, int] = None):
