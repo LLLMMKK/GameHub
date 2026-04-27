@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.parse import quote
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QScrollArea, QTextEdit, QGridLayout
+    QPushButton, QFrame, QScrollArea, QTextEdit, QGridLayout, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QColor, QFont
@@ -120,7 +120,40 @@ class GameDetailPage(QWidget):
         self.play_btn.setFont(f)
         right.addWidget(self.play_btn)
 
-        right.addSpacing(28)
+        utility_row = QHBoxLayout()
+        utility_row.setSpacing(10)
+
+        self.import_btn = QPushButton("素材导入")
+        self.import_btn.setObjectName("secondary-btn")
+        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.import_btn.clicked.connect(self._open_resource_dialog)
+        utility_row.addWidget(self.import_btn)
+
+        self.search_steam_btn = QPushButton("Steam")
+        self.search_steam_btn.setObjectName("secondary-btn")
+        self.search_steam_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.search_steam_btn.clicked.connect(self._search_steam)
+        utility_row.addWidget(self.search_steam_btn)
+
+        self.more_btn = QPushButton("更多操作")
+        self.more_btn.setObjectName("secondary-btn")
+        self.more_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._action_menu = QMenu(self.more_btn)
+        self._action_menu.setObjectName("detail-action-menu")
+        edit_action = self._action_menu.addAction("编辑信息")
+        edit_action.triggered.connect(lambda: self.edit_clicked.emit(self.game.id if self.game else ""))
+        open_dir_action = self._action_menu.addAction("文件位置")
+        open_dir_action.triggered.connect(self._open_file_location)
+        self._action_menu.addSeparator()
+        delete_action = self._action_menu.addAction("删除游戏")
+        delete_action.triggered.connect(self._on_delete)
+        self.more_btn.clicked.connect(lambda: self._action_menu.exec(self.more_btn.mapToGlobal(self.more_btn.rect().bottomLeft())))
+        utility_row.addWidget(self.more_btn)
+
+        utility_row.addStretch()
+        right.addLayout(utility_row)
+
+        right.addSpacing(24)
 
         # ── 游戏介绍卡片 ──
         desc_card = QWidget()
@@ -138,7 +171,7 @@ class GameDetailPage(QWidget):
         self.desc_content.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.desc_content.setMaximumHeight(280)
         self.desc_content.setMinimumHeight(60)
-        self.desc_content.setPlaceholderText("暂无介绍，点击下方「搜索信息」从网络获取")
+        self.desc_content.setPlaceholderText("暂无介绍，可通过「素材导入」从网络资料中粘贴保存")
         desc_layout.addWidget(self.desc_content)
 
         right.addWidget(desc_card)
@@ -177,75 +210,6 @@ class GameDetailPage(QWidget):
             self._info_values[key] = val_lbl
 
         right.addLayout(info_grid)
-
-        right.addSpacing(24)
-
-        # ── 操作按钮 ──
-        action_header = QLabel("操作")
-        action_header.setObjectName("section-header")
-        right.addWidget(action_header)
-
-        right.addSpacing(10)
-
-        action_row = QHBoxLayout()
-        action_row.setSpacing(10)
-
-        self.edit_btn = QPushButton("编辑信息")
-        self.edit_btn.setObjectName("secondary-btn")
-        self.edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.edit_btn.clicked.connect(lambda: self.edit_clicked.emit(self.game.id if self.game else ""))
-        action_row.addWidget(self.edit_btn)
-
-        self.open_dir_btn = QPushButton("文件位置")
-        self.open_dir_btn.setObjectName("secondary-btn")
-        self.open_dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.open_dir_btn.clicked.connect(self._open_file_location)
-        action_row.addWidget(self.open_dir_btn)
-
-        self.delete_btn = QPushButton("删除游戏")
-        self.delete_btn.setObjectName("secondary-btn")
-        self.delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.delete_btn.clicked.connect(self._on_delete)
-        f = self.delete_btn.font()
-        f.setBold(True)
-        self.delete_btn.setFont(f)
-        action_row.addWidget(self.delete_btn)
-
-        action_row.addStretch()
-        right.addLayout(action_row)
-
-        right.addSpacing(20)
-
-        # ── 搜索区域 ──
-        search_header = QLabel("搜索网络资源")
-        search_header.setObjectName("section-header")
-        right.addWidget(search_header)
-
-        right.addSpacing(10)
-
-        search_row = QHBoxLayout()
-        search_row.setSpacing(10)
-
-        self.search_cover_btn = QPushButton("搜索封面")
-        self.search_cover_btn.setObjectName("secondary-btn")
-        self.search_cover_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.search_cover_btn.clicked.connect(self._search_cover)
-        search_row.addWidget(self.search_cover_btn)
-
-        self.search_info_btn = QPushButton("搜索信息")
-        self.search_info_btn.setObjectName("secondary-btn")
-        self.search_info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.search_info_btn.clicked.connect(self._search_info)
-        search_row.addWidget(self.search_info_btn)
-
-        self.search_steam_btn = QPushButton("Steam")
-        self.search_steam_btn.setObjectName("secondary-btn")
-        self.search_steam_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.search_steam_btn.clicked.connect(self._search_steam)
-        search_row.addWidget(self.search_steam_btn)
-
-        search_row.addStretch()
-        right.addLayout(search_row)
 
         right.addStretch()
 
@@ -348,16 +312,6 @@ class GameDetailPage(QWidget):
         elif self.game and self.game.exe_path:
             from PyQt6.QtWidgets import QMessageBox
             QMessageBox.information(self, "提示", "游戏文件不存在，可能已被移动或删除")
-
-    # ── 搜索 ──
-
-    def _search_cover(self):
-        if self.game:
-            self._open_resource_dialog()
-
-    def _search_info(self):
-        if self.game:
-            self._open_resource_dialog()
 
     def _search_steam(self):
         if self.game:

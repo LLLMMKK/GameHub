@@ -371,32 +371,62 @@ QMainWindow {{
     color: {text_muted};
 }}
 
-/* 分类按钮 */
-#category-btn {{
+/* 分类行 */
+#category-row {{
     background-color: transparent;
-    border: none;
-    text-align: left;
-    padding: 8px 18px;
-    color: {text_sidebar};
-    font-size: 14px;
-    border-radius: 6px;
+    border: 1px solid transparent;
+    border-radius: 7px;
     margin: 1px 10px;
 }}
 
-#category-btn:hover {{
+#category-row:hover {{
     background-color: {bg_card};
+    border-color: {border_btn_secondary};
+}}
+
+#category-row[selected="true"] {{
+    background-color: {accent_sidebar_gradient};
+    border-color: {border_hover};
+}}
+
+#category-rail {{
+    background-color: {border_btn_secondary};
+    border-radius: 2px;
+}}
+
+#category-row:hover #category-rail,
+#category-row[selected="true"] #category-rail {{
+    background-color: {accent_sidebar};
+}}
+
+#category-name {{
+    color: {text_sidebar};
+    font-size: 14px;
+    background: transparent;
+}}
+
+#category-row:hover #category-name {{
     color: {text_sidebar_hover};
 }}
 
-#category-btn[selected="true"] {{
-    background-color: {accent_sidebar_gradient};
+#category-row[selected="true"] #category-name {{
     color: {accent_sidebar};
-    border-left: 3px solid {accent};
+    font-weight: bold;
 }}
 
-#category-btn[running="true"] {{
-    background-color: {bg_running};
-    color: {green};
+#category-count {{
+    color: {text_muted};
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    padding: 1px 7px;
+    font-size: 11px;
+    min-width: 16px;
+}}
+
+#category-row[selected="true"] #category-count {{
+    color: {text_primary};
+    border-color: {accent};
 }}
 
 /* ===== 顶部工具栏 ===== */
@@ -454,24 +484,28 @@ QMainWindow {{
     border-color: {green_hover};
 }}
 
-#add-game-menu {{
+#add-game-menu,
+#detail-action-menu {{
     background-color: {bg_context};
     border: 1px solid {border_context};
     border-radius: 8px;
     padding: 6px;
 }}
 
-#add-game-menu::item {{
+#add-game-menu::item,
+#detail-action-menu::item {{
     color: {text_primary};
     padding: 8px 28px;
     border-radius: 5px;
 }}
 
-#add-game-menu::item:selected {{
+#add-game-menu::item:selected,
+#detail-action-menu::item:selected {{
     background-color: {bg_context_item};
 }}
 
-#add-game-menu::separator {{
+#add-game-menu::separator,
+#detail-action-menu::separator {{
     height: 1px;
     background-color: {border};
     margin: 5px 6px;
@@ -625,7 +659,7 @@ QMainWindow {{
     background-color: {bg_card};
     border-radius: 8px;
     border: 1px solid {border};
-    padding: 24px 20px 8px 20px;
+    padding: 0px;
 }}
 
 #game-card:hover {{
@@ -652,17 +686,30 @@ QMainWindow {{
     border-radius: 9px 9px 0 0;
 }}
 
+#card-cover-overlay {{
+    background-color: rgba(0,0,0,92);
+    border-radius: 9px 9px 0 0;
+}}
+
+#card-info {{
+    background-color: {bg_card};
+    border-top: 1px solid {border};
+    border-radius: 0px 0px 8px 8px;
+}}
+
 #game-title {{
     color: {text_primary};
     font-size: 13px;
     font-weight: bold;
-    padding: 8px 10px 2px 10px;
+    padding: 0px;
+    background: transparent;
 }}
 
 #game-time {{
     color: {text_muted};
     font-size: 11px;
-    padding: 0px 10px 6px 10px;
+    padding: 0px;
+    background: transparent;
 }}
 
 #card-cat-tag {{
@@ -684,46 +731,18 @@ QMainWindow {{
     font-weight: bold;
 }}
 
-/* 卡片内播放按钮 */
-#card-play-btn {{
-    background-color: {green};
-    border: none;
-    border-radius: 8px;
-    color: {text_on_accent};
-    font-weight: bold;
-    font-size: 11px;
-    padding: 0px;
-}}
-
-#card-play-btn:hover {{
-    background-color: {green_hover};
-}}
-
-#card-play-btn:pressed {{
-    background-color: {green_pressed};
-}}
-
-#card-play-btn[running="true"] {{
-    background-color: {red};
-}}
-
-#card-play-btn[running="true"]:hover {{
-    background-color: {red_hover};
-}}
-
 /* 悬浮遮罩大播放按钮 */
 #card-play-overlay-btn {{
-    background-color: {green};
-    border: 2px solid {green_border_glow};
+    background-color: rgba(0,0,0,130);
+    border: none;
     border-radius: 28px;
     color: {text_on_accent};
     font-weight: bold;
-    font-size: 22px;
+    font-size: 21px;
 }}
 
 #card-play-overlay-btn:hover {{
-    background-color: {green_hover};
-    border-color: {green_border_glow};
+    background-color: {green};
 }}
 
 #card-play-overlay-btn:pressed {{
@@ -732,11 +751,19 @@ QMainWindow {{
 
 #card-play-overlay-btn[running="true"] {{
     background-color: {red};
-    border-color: {red_border_glow};
 }}
 
 #card-play-overlay-btn[running="true"]:hover {{
     background-color: {red_hover};
+}}
+
+#card-overlay-hint {{
+    color: rgba(255,255,255,185);
+    font-size: 12px;
+    font-weight: bold;
+    background-color: transparent;
+    border: none;
+    padding: 0px;
 }}
 
 /* 详情面板播放按钮 */

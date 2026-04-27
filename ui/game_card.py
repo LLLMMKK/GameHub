@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QGraphicsDropShadowEffect, QMenu,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QVariantAnimation, QTimer
-from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QCursor
+from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QVariantAnimation, QTimer, QRectF
+from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QCursor, QPainterPath
 
 from core.game_model import Game
 
@@ -71,6 +71,29 @@ def fit_cover_pixmap(pixmap: QPixmap, width: int, height: int) -> QPixmap:
     return scaled.copy(x, y, width, height)
 
 
+def round_top_corners(pixmap: QPixmap, radius: int = 9) -> QPixmap:
+    """把封面裁成与卡片遮罩一致的上圆角。"""
+    if pixmap.isNull() or radius <= 0:
+        return pixmap
+
+    result = QPixmap(pixmap.size())
+    result.fill(Qt.GlobalColor.transparent)
+
+    path = QPainterPath()
+    path.setFillRule(Qt.FillRule.WindingFill)
+    rect = QRectF(result.rect())
+    path.addRoundedRect(rect, radius, radius)
+    path.addRect(QRectF(0, result.height() - radius, radius, radius))
+    path.addRect(QRectF(result.width() - radius, result.height() - radius, radius, radius))
+
+    painter = QPainter(result)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setClipPath(path)
+    painter.drawPixmap(0, 0, pixmap)
+    painter.end()
+    return result
+
+
 @lru_cache(maxsize=128)
 def generate_default_cover(name: str, width=260, height=340) -> QPixmap:
     """根据游戏名首字母生成默认封面 - 渐变色+首字母"""
@@ -116,16 +139,6 @@ def generate_default_cover(name: str, width=260, height=340) -> QPixmap:
     painter.setPen(QColor(255, 255, 255, 160))
     painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, initial)
 
-    # 底部小字
-    if len(name) > 1:
-        small_font = QFont("Microsoft YaHei", 14)
-        small_font.setBold(False)
-        painter.setFont(small_font)
-        painter.setPen(QColor(255, 255, 255, 80))
-        rect = pixmap.rect()
-        rect.setTop(rect.top() + rect.height() // 2 + 40)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, name[:12])
-
     painter.end()
     return pixmap
 
@@ -139,6 +152,7 @@ class GameCard(QWidget):
 
     CARD_WIDTH = 210
     COVER_HEIGHT = 280
+    INFO_HEIGHT = 78
 
     def __init__(self, game: Game, parent=None):
         super().__init__(parent)
@@ -147,7 +161,7 @@ class GameCard(QWidget):
         self._privacy_mode = False
         self.setObjectName("game-card")
         self.setProperty("running", str(self._running).lower())
-        self.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT + 80)
+        self.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT + self.INFO_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
@@ -163,6 +177,7 @@ class GameCard(QWidget):
         # 封面区域（含悬浮播放按钮）
         self._cover_container = QWidget()
         self._cover_container.setObjectName("game-cover")
+        self._cover_container.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT)
         cover_layout = QVBoxLayout(self._cover_container)
         cover_layout.setContentsMargins(0, 0, 0, 0)
         cover_layout.setSpacing(0)
@@ -175,13 +190,16 @@ class GameCard(QWidget):
 
         # 悬浮播放遮罩（初始隐藏，鼠标悬停时淡入）
         self._overlay = QWidget(self._cover_container)
+        self._overlay.setObjectName("card-cover-overlay")
         self._overlay.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT)
         self._overlay.move(0, 0)
         self._overlay.setStyleSheet("background-color: rgba(0,0,0,0); border-radius: 9px 9px 0 0;")
         self._overlay.hide()
 
         overlay_layout = QVBoxLayout(self._overlay)
-        overlay_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.setSpacing(14)
+        overlay_layout.addStretch(1)
 
         # 大播放按钮
         self._big_play_btn = QPushButton("▶" if not self._running else "■")
@@ -189,15 +207,18 @@ class GameCard(QWidget):
         self._big_play_btn.setFixedSize(56, 56)
         self._big_play_btn.setProperty("running", str(self._running).lower())
         self._big_play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._big_play_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._big_play_btn.setToolTip("启动游戏" if not self._running else "关闭游戏")
         self._big_play_btn.clicked.connect(self._on_play)
-        overlay_layout.addWidget(self._big_play_btn)
+        overlay_layout.addWidget(self._big_play_btn, 0, Qt.AlignmentFlag.AlignHCenter)
 
         # 提示文字
-        self._overlay_hint = QLabel("启动游戏" if not self._running else "关闭游戏")
-        self._overlay_hint.setStyleSheet("color: rgba(255,255,255,180); font-size: 12px; background: transparent; border: none;")
+        self._overlay_hint = QLabel("启动" if not self._running else "关闭")
+        self._overlay_hint.setObjectName("card-overlay-hint")
         self._overlay_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        overlay_layout.addWidget(self._overlay_hint)
+        self._overlay_hint.setFixedWidth(72)
+        overlay_layout.addWidget(self._overlay_hint, 0, Qt.AlignmentFlag.AlignHCenter)
+        overlay_layout.addStretch(1)
 
         self._overlay.raise_()
         self._overlay.installEventFilter(self)
@@ -212,54 +233,41 @@ class GameCard(QWidget):
 
         # 信息区域
         info_widget = QWidget()
-        info_widget.setStyleSheet("background-color: transparent;")
+        info_widget.setObjectName("card-info")
+        info_widget.setFixedSize(self.CARD_WIDTH, self.INFO_HEIGHT)
         info_layout = QVBoxLayout(info_widget)
-        info_layout.setContentsMargins(10, 8, 10, 8)
-        info_layout.setSpacing(3)
+        info_layout.setContentsMargins(12, 9, 12, 9)
+        info_layout.setSpacing(5)
 
         # 名称
         display_name = mask_name(self.game.name) if (self.game.is_r18 and self._privacy_mode) else self.game.name
         self.title_label = QLabel(display_name)
         self.title_label.setObjectName("game-title")
         self.title_label.setWordWrap(True)
-        self.title_label.setMaximumHeight(38)
+        self.title_label.setFixedHeight(34)
         self.title_label.setToolTip(self.game.name)
         info_layout.addWidget(self.title_label)
 
-        # 底部行：分类标签 + R18标签 + 时长 + 小播放按钮
+        # 底部行：分类标签 + R18 标签 + 时长
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(6)
 
-        # 分类小标签
-        if self.game.category and self.game.category != "其他":
-            cat_label = QLabel(self.game.category)
-            cat_label.setObjectName("card-cat-tag")
-            bottom_row.addWidget(cat_label)
+        self.category_label = QLabel()
+        self.category_label.setObjectName("card-cat-tag")
+        bottom_row.addWidget(self.category_label)
 
-        # R18 红色标签
-        if self.game.is_r18:
-            r18_label = QLabel("R18")
-            r18_label.setObjectName("card-r18-tag")
-            bottom_row.addWidget(r18_label)
+        self.r18_label = QLabel("R18")
+        self.r18_label.setObjectName("card-r18-tag")
+        bottom_row.addWidget(self.r18_label)
 
+        bottom_row.addStretch()
         self.time_label = QLabel(self.game.format_play_time())
         self.time_label.setObjectName("game-time")
         bottom_row.addWidget(self.time_label)
 
-        bottom_row.addStretch()
-
-        # 小播放按钮（始终可见）
-        self.play_btn = QPushButton("▶")
-        self.play_btn.setObjectName("card-play-btn")
-        self.play_btn.setFixedSize(32, 24)
-        self.play_btn.setProperty("running", str(self._running).lower())
-        self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.play_btn.setToolTip("启动游戏" if not self._running else "关闭游戏")
-        self.play_btn.clicked.connect(self._on_play)
-        bottom_row.addWidget(self.play_btn)
-
         info_layout.addLayout(bottom_row)
         layout.addWidget(info_widget)
+        self._update_meta_labels()
 
         # 卡片阴影
         shadow = QGraphicsDropShadowEffect(self)
@@ -277,14 +285,14 @@ class GameCard(QWidget):
                 scaled = fit_cover_pixmap(pixmap, self.CARD_WIDTH, self.COVER_HEIGHT)
                 if self.game.is_r18 and self._privacy_mode:
                     scaled = apply_mosaic(scaled, block_size=9)
-                self.cover_label.setPixmap(scaled)
+                self.cover_label.setPixmap(round_top_corners(scaled))
                 return
 
         default = generate_default_cover(self.game.name, self.CARD_WIDTH, self.COVER_HEIGHT)
         # 隐私模式下 R18 默认封面也打马赛克
         if self.game.is_r18 and self._privacy_mode:
             default = apply_mosaic(default, block_size=9)
-        self.cover_label.setPixmap(default)
+        self.cover_label.setPixmap(round_top_corners(default))
 
     def _on_play(self):
         self.play_clicked.emit(self.game.id)
@@ -337,7 +345,7 @@ class GameCard(QWidget):
         self._overlay_anim.start()
 
     def _on_overlay_anim(self, value: float):
-        alpha = int(value * 0.45 * 255)
+        alpha = int(value * 92)
         self._overlay.setStyleSheet(
             f"background-color: rgba(0,0,0,{alpha}); border-radius: 9px 9px 0 0;"
         )
@@ -352,6 +360,7 @@ class GameCard(QWidget):
         self.title_label.setText(display_name)
         self.title_label.setToolTip(game.name)
         self.time_label.setText(game.format_play_time())
+        self._update_meta_labels()
         self._running = game.is_running
         self._update_play_buttons()
         self._load_cover()
@@ -379,15 +388,14 @@ class GameCard(QWidget):
         self._big_play_btn.style().unpolish(self._big_play_btn)
         self._big_play_btn.style().polish(self._big_play_btn)
 
-        # 小按钮
-        self.play_btn.setText(text)
-        self.play_btn.setProperty("running", prop)
-        self.play_btn.setToolTip(tooltip)
-        self.play_btn.style().unpolish(self.play_btn)
-        self.play_btn.style().polish(self.play_btn)
-
         # 提示文字
-        self._overlay_hint.setText(tooltip)
+        self._overlay_hint.setText("关闭" if is_running else "启动")
+
+    def _update_meta_labels(self):
+        has_category = bool(self.game.category and self.game.category != "其他")
+        self.category_label.setVisible(has_category)
+        self.category_label.setText(self.game.category if has_category else "")
+        self.r18_label.setVisible(self.game.is_r18)
 
     def set_privacy_mode(self, enabled: bool):
         """设置隐私模式，刷新封面和名称显示"""

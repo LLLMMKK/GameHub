@@ -1,52 +1,64 @@
 """侧边栏 - 分类导航和搜索（精美版）"""
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit,
-    QPushButton, QScrollArea, QFrame
+    QHBoxLayout, QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
 
-# 分类图标映射
-CATEGORY_ICONS = {
-    "全部": "●", "最近游玩": "◆", "动作": "▲", "策略": "◇",
-    "RPG": "✦", "冒险": "◈", "模拟": "□", "体育": "○",
-    "竞速": "▶", "休闲": "◌", "Galgame": "☆", "其他": "▣",
-}
-
-
-class CategoryButton(QPushButton):
-    """分类按钮"""
+class CategoryButton(QWidget):
+    """分类行：左侧 accent rail + 名称 + 数量胶囊"""
     clicked_category = pyqtSignal(str)
 
     def __init__(self, text: str, count: int = 0):
         super().__init__()
         self.category_name = text
-        self.setObjectName("category-btn")
+        self.setObjectName("category-row")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._selected = False
-        self._update_text(text, count)
-        self.clicked.connect(lambda: self.clicked_category.emit(text))
+        self._setup_ui()
+        self.update_count(count)
 
-    def _update_text(self, text: str, count: int = 0):
-        icon = CATEGORY_ICONS.get(text, "▣")
-        display = f"  {icon}  {text}"
-        if count > 0:
-            display += f"  ({count})"
-        self.setText(display)
+    def _setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 7, 10, 7)
+        layout.setSpacing(10)
+
+        self._rail = QFrame()
+        self._rail.setObjectName("category-rail")
+        self._rail.setFixedSize(3, 18)
+        layout.addWidget(self._rail)
+
+        self._name_label = QLabel(self.category_name)
+        self._name_label.setObjectName("category-name")
+        self._name_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self._name_label, 1)
+
+        self._count_label = QLabel()
+        self._count_label.setObjectName("category-count")
+        self._count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._count_label)
 
     def set_selected(self, selected: bool):
         self._selected = selected
         self.setProperty("selected", str(selected).lower())
-        self.style().unpolish(self)
-        self.style().polish(self)
+        for widget in (self, self._rail, self._name_label, self._count_label):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
     def update_count(self, count: int):
-        self._update_text(self.category_name, count)
+        self._count_label.setVisible(count > 0)
+        self._count_label.setText(str(count))
 
     def set_running(self, running: bool):
         self.setProperty("running", str(running).lower())
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked_category.emit(self.category_name)
+        super().mousePressEvent(event)
 
 
 class Sidebar(QWidget):
@@ -125,7 +137,7 @@ class Sidebar(QWidget):
         version.setObjectName("sidebar-version")
         layout.addWidget(version)
 
-    def set_categories(self, categories: list[str], counts: dict[str, int] = None):
+    def set_categories(self, categories: list[str], counts: dict[str, int] = None, current_category: str = "全部"):
         if counts is None:
             counts = {}
 
@@ -141,7 +153,9 @@ class Sidebar(QWidget):
             self._cat_layout.addWidget(btn)
             self._buttons.append(btn)
 
-        self._select_category("全部")
+        if current_category not in categories:
+            current_category = "全部" if "全部" in categories else (categories[0] if categories else "")
+        self._select_category(current_category)
 
     def update_counts(self, counts: dict[str, int]):
         for btn in self._buttons:

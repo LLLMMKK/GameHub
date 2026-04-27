@@ -164,7 +164,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         for key, label in (
             ("shown", "当前"),
             ("played", "已游玩"),
-            ("recent", "有记录"),
+            ("unplayed", "未游玩"),
             ("hours", "总时长"),
         ):
             stat = QWidget()
@@ -230,16 +230,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         toolbar.setObjectName("toolbar")
         layout = QHBoxLayout(toolbar)
         layout.setContentsMargins(24, 10, 24, 10)
-
-        # 当前分类标题
-        self.category_title = QLabel("全部游戏")
-        self.category_title.setObjectName("category-title")
-        layout.addWidget(self.category_title)
-
-        # 游戏数量标记
-        self.game_count_label = QLabel("")
-        self.game_count_label.setObjectName("game-count-badge")
-        layout.addWidget(self.game_count_label)
 
         layout.addStretch()
 
@@ -351,7 +341,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         # 只在分类列表变化时重建按钮，平时仅更新计数
         current_cats = [b.category_name for b in self.sidebar._buttons]
         if current_cats != self.store.categories:
-            self.sidebar.set_categories(self.store.categories, counts)
+            if self._current_category not in self.store.categories:
+                self._current_category = "全部"
+            self.sidebar.set_categories(self.store.categories, counts, self._current_category)
         else:
             self.sidebar.update_counts(counts)
 
@@ -375,17 +367,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         # 获取要显示的游戏
         games = self._get_filtered_games()
 
-        # 更新标题
-        if self._search_query:
-            self.category_title.setText(f"搜索: {self._search_query}")
-        elif self._current_category == "全部":
-            self.category_title.setText("全部游戏")
-        elif self._current_category == "最近游玩":
-            self.category_title.setText("最近游玩")
-        else:
-            self.category_title.setText(self._current_category)
-
-        self.game_count_label.setText(f"({len(games)})")
         self._update_overview(games)
 
         # 空状态
@@ -418,6 +399,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             games = self.store.search_games(self._search_query)
         else:
             games = self.store.get_games_by_category(self._current_category)
+            if self._current_category == "最近游玩":
+                return games
         return self._sort_games(games)
 
     def _sort_games(self, games: list[Game]) -> list[Game]:
@@ -434,11 +417,11 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def _update_overview(self, shown_games: list[Game]):
         played = sum(1 for g in shown_games if g.total_play_time > 0)
-        recent = sum(1 for g in shown_games if g.last_played)
+        unplayed = sum(1 for g in shown_games if g.total_play_time <= 0)
         total_hours = int(sum(g.total_play_time for g in shown_games) // 3600)
         self._overview_stats["shown"].setText(str(len(shown_games)))
         self._overview_stats["played"].setText(str(played))
-        self._overview_stats["recent"].setText(str(recent))
+        self._overview_stats["unplayed"].setText(str(unplayed))
         self._overview_stats["hours"].setText(f"{total_hours}h")
 
         if self._search_query:
@@ -767,12 +750,15 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
                 counts[cat] += 1
         counts["全部"] = len(self.store.games)
         counts["最近游玩"] = sum(1 for g in self.store.games if g.last_played)
-        self.sidebar.set_categories(categories, counts)
+        preview_current = self._current_category if self._current_category in categories else "全部"
+        self.sidebar.set_categories(categories, counts, preview_current)
 
     def _sync_categories(self, new_cats: list[str]):
         """同步分类列表到 store，处理被删除分类的游戏"""
         removed = [c for c in self.store.categories if c not in new_cats]
         self.store.categories = list(new_cats)
+        if self._current_category not in self.store.categories:
+            self._current_category = "全部"
         for cat in removed:
             for g in self.store.games:
                 if g.category == cat:
