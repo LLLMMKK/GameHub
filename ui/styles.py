@@ -325,14 +325,14 @@ QMainWindow {{
     color: {accent_sidebar};
     font-size: 22px;
     font-weight: bold;
-    padding: 24px 20px 8px 20px;
+    padding: 20px 20px 6px 20px;
     letter-spacing: 0px;
 }}
 
 #sidebar-subtitle {{
     color: {text_muted};
     font-size: 11px;
-    padding: 0px 20px 16px 20px;
+    padding: 0px 20px 12px 20px;
 }}
 
 #sidebar-section-label {{
@@ -356,10 +356,10 @@ QMainWindow {{
     background-color: {bg_input};
     border: 1px solid {border_btn_secondary};
     border-radius: 8px;
-    padding: 10px 14px;
+    padding: 8px 14px;
     color: {text_secondary};
     font-size: 13px;
-    margin: 4px 14px 8px 14px;
+    margin: 2px 14px 6px 14px;
 }}
 
 #search-box:focus {{
@@ -376,7 +376,7 @@ QMainWindow {{
     background-color: transparent;
     border: none;
     text-align: left;
-    padding: 11px 18px;
+    padding: 8px 18px;
     color: {text_sidebar};
     font-size: 14px;
     border-radius: 6px;

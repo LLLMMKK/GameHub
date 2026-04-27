@@ -85,7 +85,7 @@ class Sidebar(QWidget):
         self.search_box.textChanged.connect(self._on_search)
         layout.addWidget(self.search_box)
 
-        layout.addSpacing(16)
+        layout.addSpacing(10)
 
         # 分隔线
         divider = QFrame()
@@ -93,7 +93,7 @@ class Sidebar(QWidget):
         divider.setFixedHeight(1)
         layout.addWidget(divider)
 
-        layout.addSpacing(12)
+        layout.addSpacing(8)
 
         # 分类标签
         cat_header = QLabel("  分  类")
@@ -104,6 +104,7 @@ class Sidebar(QWidget):
 
         # 分类列表
         scroll = QScrollArea()
+        scroll.setObjectName("category-scroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -117,10 +118,9 @@ class Sidebar(QWidget):
         self._cat_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         scroll.setWidget(self._cat_container)
-        layout.addWidget(scroll)
+        layout.addWidget(scroll, 1)
 
         # 底部版本
-        layout.addStretch()
         version = QLabel("  v1.0.0")
         version.setObjectName("sidebar-version")
         layout.addWidget(version)
