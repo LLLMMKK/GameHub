@@ -14,7 +14,7 @@ class SettingsDialog(QDialog):
     """应用设置"""
 
     privacy_mode_changed = pyqtSignal(bool)  # 隐私模式变更信号
-    categories_changed = pyqtSignal()        # 分类变更信号
+    categories_changed = pyqtSignal(list)    # 分类变更信号
     search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
     theme_changed = pyqtSignal(str)          # 主题变更信号
@@ -100,6 +100,7 @@ class SettingsDialog(QDialog):
         game_dir_row = QHBoxLayout()
         self.game_dir_input = QLineEdit(self._default_game_dir)
         self.game_dir_input.setPlaceholderText("未设置")
+        self.game_dir_input.editingFinished.connect(self._sync_game_dir_input)
         game_dir_btn = QPushButton("浏览")
         game_dir_btn.setObjectName("file-btn")
         game_dir_btn.clicked.connect(self._change_game_dir)
@@ -325,7 +326,7 @@ class SettingsDialog(QDialog):
         self._categories.append(name)
         self._new_cat_input.clear()
         self._refresh_cat_list()
-        self.categories_changed.emit()
+        self.categories_changed.emit(list(self._categories))
 
     def _remove_category(self, name: str):
         if name in FIXED_CATEGORIES:
@@ -333,7 +334,7 @@ class SettingsDialog(QDialog):
         if name in self._categories:
             self._categories.remove(name)
         self._refresh_cat_list()
-        self.categories_changed.emit()
+        self.categories_changed.emit(list(self._categories))
 
     def _on_privacy_toggled(self, checked: bool):
         self._privacy_mode = checked
@@ -358,5 +359,15 @@ class SettingsDialog(QDialog):
         path = QFileDialog.getExistingDirectory(self, "选择默认游戏库目录", start)
         if path:
             self.game_dir_input.setText(path)
-            self._default_game_dir = path
-            self.game_dir_changed.emit(path)
+            self._sync_game_dir_input()
+
+    def _sync_game_dir_input(self):
+        path = self.game_dir_input.text().strip()
+        if path == self._default_game_dir:
+            return
+        self._default_game_dir = path
+        self.game_dir_changed.emit(path)
+
+    def done(self, result: int):
+        self._sync_game_dir_input()
+        super().done(result)

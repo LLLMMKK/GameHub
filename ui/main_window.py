@@ -73,6 +73,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self.setWindowOpacity(1.0)
         self._apply_frameless_mode(self.store.frameless_mode)
         self._refresh()
+        if self.store.load_errors:
+            QTimer.singleShot(0, self._show_load_errors)
 
     @property
     def _default_category(self) -> str:
@@ -510,7 +512,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         game = self.store.get_game(game_id)
         if game:
             game.is_running = False
-        self._update_card_state(game_id)
+        self._refresh_cards(force=True)
         self._refresh_sidebar_counts()
         if self._selected_game_id == game_id:
             self.detail_page.set_game(game, False)
@@ -752,10 +754,20 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         dialog.theme_changed.connect(self._on_theme_changed)
         dialog.frameless_mode_changed.connect(self._on_frameless_mode_changed)
         # 实时刷新侧边栏（不保存，仅预览）
-        dialog.categories_changed.connect(self._refresh)
+        dialog.categories_changed.connect(self._preview_categories)
         dialog.exec()
         # 对话框关闭后统一同步分类到 store
         self._sync_categories(dialog._categories)
+
+    def _preview_categories(self, categories: list[str]):
+        counts = {cat: 0 for cat in categories}
+        for game in self.store.games:
+            cat = game.category if game.category in counts else "其他"
+            if cat in counts:
+                counts[cat] += 1
+        counts["全部"] = len(self.store.games)
+        counts["最近游玩"] = sum(1 for g in self.store.games if g.last_played)
+        self.sidebar.set_categories(categories, counts)
 
     def _sync_categories(self, new_cats: list[str]):
         """同步分类列表到 store，处理被删除分类的游戏"""
@@ -767,6 +779,16 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
                     g.category = "其他"
         self.store.save()
         self._refresh()
+
+    def _show_load_errors(self):
+        if not self.store.load_errors:
+            return
+        QMessageBox.warning(
+            self,
+            "数据文件已备份",
+            "部分数据文件无法读取，已自动备份并使用默认数据继续启动：\n\n"
+            + "\n".join(self.store.load_errors)
+        )
 
     def showEvent(self, event):
         super().showEvent(event)

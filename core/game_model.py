@@ -121,6 +121,7 @@ class GameDataStore:
         self.theme: str = "暗夜"
         self.sort_mode: str = "name"
         self.frameless_mode: bool = False
+        self.load_errors: list[str] = []
         self._ensure_data_dir()
         self.load()
 
@@ -139,8 +140,8 @@ class GameDataStore:
                 self.theme = config.get("theme", "暗夜")
                 self.sort_mode = config.get("sort_mode", "name")
                 self.frameless_mode = config.get("frameless_mode", False)
-            except (json.JSONDecodeError, KeyError):
-                pass
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                self._backup_unreadable_file(self.config_file, exc)
 
         # 加载游戏数据
         if os.path.exists(self.games_file):
@@ -153,8 +154,10 @@ class GameDataStore:
                 for cat in custom_cats:
                     if cat not in self.categories:
                         self.categories.append(cat)
-            except (json.JSONDecodeError, KeyError):
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                self._backup_unreadable_file(self.games_file, exc)
                 self.games = []
+                self._games_by_id = {}
 
     def save(self):
         self._ensure_data_dir()
@@ -184,6 +187,15 @@ class GameDataStore:
                 pass
             raise
 
+    def _backup_unreadable_file(self, path: str, error: Exception):
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = f"{path}.bad-{timestamp}"
+        try:
+            os.replace(path, backup_path)
+            self.load_errors.append(f"{os.path.basename(path)} -> {backup_path} ({error})")
+        except OSError as backup_error:
+            self.load_errors.append(f"{os.path.basename(path)} 无法读取且备份失败: {backup_error}")
+
     def add_game(self, game: Game) -> Game:
         self.games.append(game)
         self._games_by_id[game.id] = game
@@ -191,7 +203,14 @@ class GameDataStore:
         return game
 
     def update_game(self, game: Game):
-        assert game.id in self._games_by_id, f"Unknown game id: {game.id}"
+        if game.id not in self._games_by_id:
+            raise ValueError(f"Unknown game id: {game.id}")
+        for index, existing in enumerate(self.games):
+            if existing.id == game.id:
+                self.games[index] = game
+                break
+        else:
+            raise ValueError(f"Game index is missing for id: {game.id}")
         self._games_by_id[game.id] = game
         self.save()
 

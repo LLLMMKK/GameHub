@@ -1,6 +1,5 @@
 """游戏详情页面 - 封面与介绍并排，支持长文本滚动"""
 import os
-import webbrowser
 from datetime import datetime
 from urllib.parse import quote
 from PyQt6.QtWidgets import (
@@ -12,22 +11,6 @@ from PyQt6.QtGui import QPixmap, QColor, QFont
 
 from core.game_model import Game
 from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap, fit_cover_pixmap
-
-
-_SEARCH_ENGINES = {
-    "baidu": {
-        "image": "https://image.baidu.com/search/index?tn=baiduimage&word={query}",
-        "info": "https://www.baidu.com/s?wd={query}",
-    },
-    "bing": {
-        "image": "https://www.bing.com/images/search?q={query}",
-        "info": "https://www.bing.com/search?q={query}",
-    },
-    "google": {
-        "image": "https://www.google.com/search?tbm=isch&q={query}",
-        "info": "https://www.google.com/search?q={query}",
-    },
-}
 
 
 class GameDetailPage(QWidget):
@@ -355,15 +338,7 @@ class GameDetailPage(QWidget):
 
     def _on_delete(self):
         if self.game:
-            from PyQt6.QtWidgets import QMessageBox
-            reply = QMessageBox.question(
-                self, "确认删除",
-                f"确定要删除游戏 \"{self.game.name}\" 吗？\n（仅从列表移除，不会删除游戏文件）",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                self.delete_clicked.emit(self.game.id)
+            self.delete_clicked.emit(self.game.id)
 
     def _open_file_location(self):
         if self.game and self.game.exe_path and os.path.exists(self.game.exe_path):
@@ -378,17 +353,18 @@ class GameDetailPage(QWidget):
 
     def _search_cover(self):
         if self.game:
-            self._open_search("image")
+            self._open_resource_dialog()
 
     def _search_info(self):
         if self.game:
-            self._open_search("info")
+            self._open_resource_dialog()
 
     def _search_steam(self):
         if self.game:
-            self._open_search("steam")
+            import webbrowser
+            webbrowser.open(f"https://store.steampowered.com/search/?term={quote(self.game.name)}")
 
-    def _open_search(self, tab: str = "image"):
+    def _open_resource_dialog(self):
         if not self.game:
             return
 
@@ -398,17 +374,7 @@ class GameDetailPage(QWidget):
             return
         data_dir = data_dir.data_dir
         game_id = self.game.id
-        engine = parent.store.default_search_engine
         name = self.game.name
-
-        engine_urls = _SEARCH_ENGINES.get(engine, _SEARCH_ENGINES["baidu"])
-
-        if tab == "image":
-            webbrowser.open(engine_urls["image"].format(query=quote(name + ' 游戏封面')))
-        elif tab == "info":
-            webbrowser.open(engine_urls["info"].format(query=quote(name + ' 游戏 介绍')))
-        elif tab == "steam":
-            webbrowser.open(f"https://store.steampowered.com/search/?term={quote(name)}")
 
         from ui.web_search_dialog import WebSearchDialog
         dlg = WebSearchDialog(name, data_dir, game_id, self)

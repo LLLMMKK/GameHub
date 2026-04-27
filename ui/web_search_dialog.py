@@ -5,14 +5,14 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QLineEdit, QTextEdit, QMessageBox, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QPixmap
 
 from utils.file_utils import save_cover
 
 class ImageDownloader(QThread):
     """后台下载图片线程"""
-    finished = pyqtSignal(bool, bytes)  # success, data
+    downloaded = pyqtSignal(bool, bytes)  # success, data
 
     def __init__(self, url: str):
         super().__init__()
@@ -25,11 +25,14 @@ class ImageDownloader(QThread):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             })
             with urlopen(req, timeout=15) as resp:
-                data = resp.read()
-            self.finished.emit(True, data)
+                max_size = 10 * 1024 * 1024
+                data = resp.read(max_size + 1)
+            if len(data) > max_size:
+                raise ValueError("Image is larger than 10 MB")
+            self.downloaded.emit(True, data)
         except Exception as e:
             print(f"Download error: {e}")
-            self.finished.emit(False, b"")
+            self.downloaded.emit(False, b"")
 
 
 class WebSearchDialog(QDialog):
@@ -234,35 +237,27 @@ class WebSearchDialog(QDialog):
             return
         self._close_after_download = False
         self._downloader = ImageDownloader(url)
-        self._downloader.finished.connect(lambda ok, data, source_url=url: self._on_image_downloaded(ok, data, preview_only, source_url))
+        self._downloader.downloaded.connect(lambda ok, data, source_url=url: self._on_image_downloaded(ok, data, preview_only, source_url))
+        self._downloader.finished.connect(self._on_downloader_finished)
         self._downloader.start()
 
     def _on_image_downloaded(self, ok: bool, data: bytes, preview_only: bool, source_url: str):
+        if self._close_after_download:
+            return
         self._status_label.setText("")
         if not ok or not data:
             self._status_label.setText("下载失败，请检查 URL")
-            if self._close_after_download:
-                self._close_after_download = False
-                self.close()
             return
 
         pixmap = QPixmap()
         pixmap.loadFromData(data)
         if pixmap.isNull():
             self._status_label.setText("无法识别该图片")
-            if self._close_after_download:
-                self._close_after_download = False
-                self.close()
             return
 
         # 缓存图片
         self._cached_pixmap = pixmap
         self._cached_url = source_url
-
-        if self._close_after_download:
-            self._close_after_download = False
-            self.close()
-            return
 
         if preview_only:
             scaled = pixmap.scaled(160, 210, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
@@ -273,6 +268,12 @@ class WebSearchDialog(QDialog):
         else:
             # 下载完成后打开裁剪对话框
             self._open_crop_dialog(pixmap)
+
+    def _on_downloader_finished(self):
+        self._downloader = None
+        if self._close_after_download:
+            self._close_after_download = False
+            QTimer.singleShot(0, self.close)
 
     def _open_crop_dialog(self, pixmap: QPixmap):
         """打开裁剪对话框，确认后保存封面"""
