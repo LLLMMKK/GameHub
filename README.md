@@ -22,6 +22,7 @@
 ```
 GameHub/
 ├── README.md
+├── pyproject.toml           # uv/项目依赖配置
 ├── GameHub.pyw              # 无终端入口
 ├── main.py                  # 控制台入口
 ├── requirements.txt         # 依赖
@@ -52,7 +53,21 @@ GameHub/
 
 ## 安装与运行
 
-**直接运行：**
+**推荐：使用 uv**
+
+```bash
+uv sync
+uv run python main.py          # 控制台模式
+uv run python GameHub.pyw      # 无控制台（Windows）
+```
+
+开发/打包工具：
+
+```bash
+uv sync --group dev
+```
+
+**兼容：使用 pip**
 
 ```bash
 pip install -r requirements.txt
@@ -63,7 +78,7 @@ python GameHub.pyw      # 无控制台（Windows）
 **打包为 exe：**
 
 ```bash
-python -m PyInstaller --onefile --windowed --icon=../ui/icon.ico --add-data "../ui/icon.ico;ui" --name GameHub --distpath . --specpath build GameHub.pyw
+uv run pyinstaller --onefile --windowed --icon=ui/icon.ico --add-data "ui/icon.ico;ui" --name GameHub --distpath . --specpath build GameHub.pyw
 ```
 
 打包后生成的 `GameHub.exe` 可独立运行，无需安装 Python。运行时数据保存在 exe 同目录下的 `data/` 文件夹中。

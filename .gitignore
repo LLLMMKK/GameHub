@@ -1,0 +1,15 @@
+.gitignore
+data/*
+.claude/*
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+.idea/
+.vscode/
+*.log
+.env
+build/
+*.spec
+*.exe
