@@ -213,6 +213,10 @@ class AddGameDialog(QDialog):
                     delete_cover(game.id, self.store.data_dir)
                     new_cover = save_cover(new_cover, game.id, self.store.data_dir)
                 game.cover_path = new_cover
+            elif not new_cover and old_cover:
+                from utils.file_utils import delete_cover
+                delete_cover(game.id, self.store.data_dir)
+                game.cover_path = ""
             self.store.update_game(game)
         else:
             game = Game(name=name, exe_path=exe_path, launch_args=args,

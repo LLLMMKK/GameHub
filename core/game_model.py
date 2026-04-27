@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+import tempfile
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -93,6 +94,7 @@ class Game:
         game.last_played = data.get("last_played")
         game.play_records = data.get("play_records", [])
         game.added_time = data.get("added_time", datetime.now().isoformat())
+        game.is_running = False
         return game
 
 
@@ -160,14 +162,27 @@ class GameDataStore:
             "games": [g.to_dict() for g in self.games],
             "categories": self.categories,
         }
-        with open(self.games_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        self._write_json_atomic(self.games_file, data)
 
     def save_config(self):
         self._ensure_data_dir()
         config = {"privacy_mode": self.privacy_mode, "default_search_engine": self.default_search_engine, "default_game_dir": self.default_game_dir, "theme": self.theme, "sort_mode": self.sort_mode, "frameless_mode": self.frameless_mode}
-        with open(self.config_file, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
+        self._write_json_atomic(self.config_file, config)
+
+    def _write_json_atomic(self, path: str, data: dict):
+        directory = os.path.dirname(path)
+        fd, tmp_path = tempfile.mkstemp(prefix=".tmp_", suffix=".json", dir=directory)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def add_game(self, game: Game) -> Game:
         self.games.append(game)

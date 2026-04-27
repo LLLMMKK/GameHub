@@ -51,6 +51,18 @@ def mask_name(name: str) -> str:
     return name[0] + "***" + name[-1]
 
 
+def fit_cover_pixmap(pixmap: QPixmap, width: int, height: int) -> QPixmap:
+    """按封面比例填充并居中裁剪，避免 QLabel 二次拉伸变形。"""
+    scaled = pixmap.scaled(
+        width, height,
+        Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+        Qt.TransformationMode.SmoothTransformation
+    )
+    x = max(0, (scaled.width() - width) // 2)
+    y = max(0, (scaled.height() - height) // 2)
+    return scaled.copy(x, y, width, height)
+
+
 @lru_cache(maxsize=128)
 def generate_default_cover(name: str, width=260, height=340) -> QPixmap:
     """根据游戏名首字母生成默认封面 - 渐变色+首字母"""
@@ -150,7 +162,7 @@ class GameCard(QWidget):
         self.cover_label = QLabel()
         self.cover_label.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT)
         self.cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cover_label.setScaledContents(True)
+        self.cover_label.setScaledContents(False)
         cover_layout.addWidget(self.cover_label)
 
         # 悬浮播放遮罩（初始隐藏，鼠标悬停时淡入）
@@ -254,11 +266,7 @@ class GameCard(QWidget):
             if not pixmap.isNull():
                 # 隐私模式下 R18 游戏封面打马赛克
                 # 先 scale 到目标尺寸再 mosaic，效果清晰锐利
-                scaled = pixmap.scaled(
-                    self.CARD_WIDTH, self.COVER_HEIGHT,
-                    Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                    Qt.TransformationMode.SmoothTransformation
-                )
+                scaled = fit_cover_pixmap(pixmap, self.CARD_WIDTH, self.COVER_HEIGHT)
                 if self.game.is_r18 and self._privacy_mode:
                     scaled = apply_mosaic(scaled, block_size=9)
                 self.cover_label.setPixmap(scaled)
@@ -338,6 +346,7 @@ class GameCard(QWidget):
         self.time_label.setText(game.format_play_time())
         self._running = game.is_running
         self._update_play_buttons()
+        self._load_cover()
 
     def set_running(self, running: bool):
         self._running = running

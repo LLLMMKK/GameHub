@@ -1,8 +1,8 @@
 """游戏启动器"""
 import os
+import shlex
 import subprocess
 import sys
-from typing import Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
@@ -30,12 +30,15 @@ class GameLauncher(QObject):
             return True
 
         try:
-            cmd = f'"{exe_path}"'
-            if args:
-                cmd += f" {args}"
+            is_batch = exe_path.lower().endswith((".bat", ".cmd"))
+            cmd = exe_path if is_batch else [exe_path]
+            if args and not is_batch:
+                cmd.extend(shlex.split(args, posix=False))
+            elif args:
+                cmd = f'"{exe_path}" {args}'
 
             # Windows 下使用 CREATE_NEW_PROCESS_GROUP
-            kwargs = {}
+            kwargs = {"shell": is_batch}
             if sys.platform == "win32":
                 kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
 

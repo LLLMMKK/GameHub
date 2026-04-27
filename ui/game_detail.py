@@ -11,7 +11,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QColor, QFont
 
 from core.game_model import Game
-from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap
+from ui.game_card import generate_default_cover, apply_mosaic, mask_name, _load_cover_pixmap, fit_cover_pixmap
 
 
 _SEARCH_ENGINES = {
@@ -126,7 +126,8 @@ class GameDetailPage(QWidget):
 
         # 启动按钮
         self.play_btn = QPushButton("▶  启动游戏")
-        self.play_btn.setObjectName("secondary-btn")
+        self.play_btn.setObjectName("play-btn")
+        self.play_btn.setProperty("running", "false")
         self.play_btn.setFixedHeight(56)
         self.play_btn.setMinimumWidth(240)
         self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -296,8 +297,7 @@ class GameDetailPage(QWidget):
         if game.cover_path and os.path.exists(game.cover_path):
             pixmap = _load_cover_pixmap(game.cover_path)
             if not pixmap.isNull():
-                scaled = pixmap.scaled(315, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                       Qt.TransformationMode.SmoothTransformation)
+                scaled = fit_cover_pixmap(pixmap, 315, 420)
                 if game.is_r18 and privacy:
                     scaled = apply_mosaic(scaled, block_size=13)
                 self.cover_label.setPixmap(scaled)
@@ -333,7 +333,7 @@ class GameDetailPage(QWidget):
         self._update_play_button()
 
     def _set_default_cover(self, privacy: bool):
-        cover = generate_default_cover(self.game.name, 320, 420)
+        cover = generate_default_cover(self.game.name, 315, 420)
         if self.game.is_r18 and privacy:
             cover = apply_mosaic(cover, block_size=13)
         self.cover_label.setPixmap(cover)
@@ -343,6 +343,9 @@ class GameDetailPage(QWidget):
             self.play_btn.setText("■  关闭游戏")
         else:
             self.play_btn.setText("▶  启动游戏")
+        self.play_btn.setProperty("running", str(self._running).lower())
+        self.play_btn.style().unpolish(self.play_btn)
+        self.play_btn.style().polish(self.play_btn)
 
     # ── 操作 ──
 
@@ -419,8 +422,7 @@ class GameDetailPage(QWidget):
             self.cover_changed.emit(path)
             pixmap = QPixmap(path)
             if not pixmap.isNull():
-                scaled = pixmap.scaled(315, 420, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                       Qt.TransformationMode.SmoothTransformation)
+                scaled = fit_cover_pixmap(pixmap, 315, 420)
                 self.cover_label.setPixmap(scaled)
 
     def _on_desc_selected(self, text: str):

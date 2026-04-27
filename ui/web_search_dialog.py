@@ -55,6 +55,7 @@ class WebSearchDialog(QDialog):
         self._game_id = game_id
         self._downloader = None
         self._cached_pixmap = None  # 缓存已下载的图片
+        self._cached_url = ""
         self._setup_ui()
 
     def _setup_ui(self):
@@ -248,7 +249,7 @@ class WebSearchDialog(QDialog):
             QMessageBox.warning(self, "提示", "请先输入图片 URL")
             return
         # 如果已有缓存的图片且URL未变，直接打开裁剪对话框
-        if self._cached_pixmap and not self._cached_pixmap.isNull():
+        if self._cached_pixmap and not self._cached_pixmap.isNull() and url == self._cached_url:
             self._open_crop_dialog(self._cached_pixmap)
         else:
             self._status_label.setText("正在下载封面...")
@@ -258,10 +259,10 @@ class WebSearchDialog(QDialog):
         if self._downloader and self._downloader.isRunning():
             self._downloader.quit()
         self._downloader = ImageDownloader(url)
-        self._downloader.finished.connect(lambda ok, data: self._on_image_downloaded(ok, data, preview_only))
+        self._downloader.finished.connect(lambda ok, data, source_url=url: self._on_image_downloaded(ok, data, preview_only, source_url))
         self._downloader.start()
 
-    def _on_image_downloaded(self, ok: bool, data: bytes, preview_only: bool):
+    def _on_image_downloaded(self, ok: bool, data: bytes, preview_only: bool, source_url: str):
         self._status_label.setText("")
         if not ok or not data:
             self._status_label.setText("下载失败，请检查 URL")
@@ -275,6 +276,7 @@ class WebSearchDialog(QDialog):
 
         # 缓存图片
         self._cached_pixmap = pixmap
+        self._cached_url = source_url
 
         if preview_only:
             scaled = pixmap.scaled(160, 210, Qt.AspectRatioMode.KeepAspectRatioByExpanding,

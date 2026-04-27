@@ -593,7 +593,7 @@ QMainWindow {{
     color: {text_on_accent};
     font-weight: bold;
     font-size: 11px;
-    padding: 24px 20px 8px 20px;
+    padding: 0px;
 }}
 
 #card-play-btn:hover {{
