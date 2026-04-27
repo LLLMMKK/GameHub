@@ -677,6 +677,20 @@ QMainWindow {{
     background-color: {bg_running_hover};
 }}
 
+#game-card[completed="true"] {{
+    border-color: #d8b85a;
+}}
+
+#game-card[completed="true"]:hover {{
+    border-color: #f0d47a;
+}}
+
+#card-completed-border {{
+    background: transparent;
+    border: 2px solid #d8b85a;
+    border-radius: 8px;
+}}
+
 #game-card[selected="true"] {{
     border-color: {accent};
 }}
@@ -728,6 +742,16 @@ QMainWindow {{
     border-radius: 3px;
     padding: 1px 5px;
     font-size: 9px;
+    font-weight: bold;
+}}
+
+#card-completed-tag {{
+    color: #f0d47a;
+    background-color: rgba(216,184,90,32);
+    border: 1px solid rgba(216,184,90,150);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 10px;
     font-weight: bold;
 }}
 
@@ -1109,6 +1133,16 @@ QLabel#section-label {{
     font-size: 12px;
     background-color: {bg_card};
     border: 1px solid {border_btn_secondary};
+    border-radius: 4px;
+    padding: 2px 10px;
+}}
+
+#detail-completed-tag {{
+    color: #f0d47a;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: rgba(216,184,90,32);
+    border: 1px solid rgba(216,184,90,150);
     border-radius: 4px;
     padding: 2px 10px;
 }}

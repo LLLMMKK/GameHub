@@ -163,7 +163,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._overview_stats = {}
         for key, label in (
             ("shown", "当前"),
-            ("played", "已游玩"),
+            ("completed", "已通关"),
             ("unplayed", "未游玩"),
             ("hours", "总时长"),
         ):
@@ -416,11 +416,11 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         return games
 
     def _update_overview(self, shown_games: list[Game]):
-        played = sum(1 for g in shown_games if g.total_play_time > 0)
+        completed = sum(1 for g in shown_games if g.is_completed)
         unplayed = sum(1 for g in shown_games if g.total_play_time <= 0)
         total_hours = int(sum(g.total_play_time for g in shown_games) // 3600)
         self._overview_stats["shown"].setText(str(len(shown_games)))
-        self._overview_stats["played"].setText(str(played))
+        self._overview_stats["completed"].setText(str(completed))
         self._overview_stats["unplayed"].setText(str(unplayed))
         self._overview_stats["hours"].setText(f"{total_hours}h")
 

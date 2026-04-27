@@ -107,6 +107,10 @@ class AddGameDialog(QDialog):
         self.r18_checkbox.setObjectName("r18-checkbox")
         form.addRow("", self.r18_checkbox)
 
+        self.completed_checkbox = QCheckBox("标记为已通关")
+        self.completed_checkbox.setObjectName("completed-checkbox")
+        form.addRow("", self.completed_checkbox)
+
         layout.addLayout(form)
 
         # 按钮
@@ -133,6 +137,7 @@ class AddGameDialog(QDialog):
         self._cover_path = game.cover_path
         self.desc_input.setText(game.description)
         self.r18_checkbox.setChecked(game.is_r18)
+        self.completed_checkbox.setChecked(game.is_completed)
         self._update_cover_preview()
 
     def _browse_exe(self):
@@ -194,6 +199,7 @@ class AddGameDialog(QDialog):
         args = self.args_input.text().strip()
         desc = self.desc_input.toPlainText().strip()
         is_r18 = self.r18_checkbox.isChecked()
+        is_completed = self.completed_checkbox.isChecked()
         new_cover = self._cover_path
 
         if self.game:
@@ -205,6 +211,7 @@ class AddGameDialog(QDialog):
             game.category = category
             game.description = desc
             game.is_r18 = is_r18
+            game.is_completed = is_completed
 
             if new_cover and new_cover != old_cover:
                 from utils.file_utils import get_cover_dir, delete_cover
@@ -220,7 +227,7 @@ class AddGameDialog(QDialog):
             self.store.update_game(game)
         else:
             game = Game(name=name, exe_path=exe_path, launch_args=args,
-                        category=category, description=desc, is_r18=is_r18)
+                        category=category, description=desc, is_r18=is_r18, is_completed=is_completed)
             if new_cover:
                 game.cover_path = save_cover(new_cover, game.id, self.store.data_dir)
             self.store.add_game(game)

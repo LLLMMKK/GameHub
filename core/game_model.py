@@ -25,6 +25,7 @@ class Game:
     cover_path: str = ""
     description: str = ""
     is_r18: bool = False
+    is_completed: bool = False
     total_play_time: float = 0.0  # 总游玩秒数
     last_played: Optional[str] = None  # ISO 格式
     play_records: list = field(default_factory=list)  # List[dict]
@@ -72,6 +73,7 @@ class Game:
             "cover_path": self.cover_path,
             "description": self.description,
             "is_r18": self.is_r18,
+            "is_completed": self.is_completed,
             "total_play_time": self.total_play_time,
             "last_played": self.last_played,
             "play_records": self.play_records,
@@ -90,6 +92,7 @@ class Game:
         game.cover_path = data.get("cover_path", "")
         game.description = data.get("description", "")
         game.is_r18 = data.get("is_r18", False)
+        game.is_completed = data.get("is_completed", False)
         game.total_play_time = data.get("total_play_time", 0.0)
         game.last_played = data.get("last_played")
         game.play_records = data.get("play_records", [])

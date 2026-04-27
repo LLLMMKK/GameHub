@@ -102,6 +102,11 @@ class GameDetailPage(QWidget):
         self.r18_label.hide()
         badges.addWidget(self.r18_label)
 
+        self.completed_label = QLabel("已通关")
+        self.completed_label.setObjectName("detail-completed-tag")
+        self.completed_label.hide()
+        badges.addWidget(self.completed_label)
+
         badges.addStretch()
         right.addLayout(badges)
 
@@ -264,6 +269,7 @@ class GameDetailPage(QWidget):
 
         # R18 标签
         self.r18_label.setVisible(game.is_r18)
+        self.completed_label.setVisible(game.is_completed)
 
         # 介绍
         self.desc_content.setPlainText(game.description or "")

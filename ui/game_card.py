@@ -161,6 +161,7 @@ class GameCard(QWidget):
         self._privacy_mode = False
         self.setObjectName("game-card")
         self.setProperty("running", str(self._running).lower())
+        self.setProperty("completed", str(self.game.is_completed).lower())
         self.setFixedSize(self.CARD_WIDTH, self.COVER_HEIGHT + self.INFO_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -260,6 +261,10 @@ class GameCard(QWidget):
         self.r18_label.setObjectName("card-r18-tag")
         bottom_row.addWidget(self.r18_label)
 
+        self.completed_label = QLabel("通关")
+        self.completed_label.setObjectName("card-completed-tag")
+        bottom_row.addWidget(self.completed_label)
+
         bottom_row.addStretch()
         self.time_label = QLabel(self.game.format_play_time())
         self.time_label.setObjectName("game-time")
@@ -268,6 +273,13 @@ class GameCard(QWidget):
         info_layout.addLayout(bottom_row)
         layout.addWidget(info_widget)
         self._update_meta_labels()
+
+        self._completion_border = QFrame(self)
+        self._completion_border.setObjectName("card-completed-border")
+        self._completion_border.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._completion_border.setGeometry(self.rect())
+        self._completion_border.setVisible(self.game.is_completed)
+        self._completion_border.raise_()
 
         # 卡片阴影
         shadow = QGraphicsDropShadowEffect(self)
@@ -356,6 +368,9 @@ class GameCard(QWidget):
 
     def update_game(self, game: Game):
         self.game = game
+        self.setProperty("completed", str(game.is_completed).lower())
+        self.style().unpolish(self)
+        self.style().polish(self)
         display_name = mask_name(game.name) if (game.is_r18 and self._privacy_mode) else game.name
         self.title_label.setText(display_name)
         self.title_label.setToolTip(game.name)
@@ -369,6 +384,11 @@ class GameCard(QWidget):
         self._running = running
         self.game.is_running = running
         self._update_play_buttons()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_completion_border"):
+            self._completion_border.setGeometry(self.rect())
 
     def _update_play_buttons(self):
         is_running = self._running
@@ -396,6 +416,10 @@ class GameCard(QWidget):
         self.category_label.setVisible(has_category)
         self.category_label.setText(self.game.category if has_category else "")
         self.r18_label.setVisible(self.game.is_r18)
+        self.completed_label.setVisible(self.game.is_completed)
+        if hasattr(self, "_completion_border"):
+            self._completion_border.setVisible(self.game.is_completed)
+            self._completion_border.raise_()
 
     def set_privacy_mode(self, enabled: bool):
         """设置隐私模式，刷新封面和名称显示"""
