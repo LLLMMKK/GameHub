@@ -89,7 +89,7 @@ class GameDetailPage(QWidget):
 
         right.addSpacing(6)
 
-        # 分类 + R18 标签
+        # 分类 + 私密标签
         badges = QHBoxLayout()
         badges.setSpacing(8)
 
@@ -97,7 +97,7 @@ class GameDetailPage(QWidget):
         self.category_label.setObjectName("detail-category-tag")
         badges.addWidget(self.category_label)
 
-        self.r18_label = QLabel("R18")
+        self.r18_label = QLabel("私密")
         self.r18_label.setObjectName("detail-r18-tag")
         self.r18_label.hide()
         badges.addWidget(self.r18_label)
@@ -267,7 +267,7 @@ class GameDetailPage(QWidget):
         # 分类
         self.category_label.setText(game.category)
 
-        # R18 标签
+        # 私密标签
         self.r18_label.setVisible(game.is_r18)
         self.completed_label.setVisible(game.is_completed)
 

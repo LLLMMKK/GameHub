@@ -123,6 +123,8 @@ class GameDataStore:
         self.default_game_dir: str = ""
         self.theme: str = "暗夜"
         self.sort_mode: str = "name"
+        self.startup_page: str = "start_home"
+        self.last_category: str = "启动页"
         self.frameless_mode: bool = False
         self.load_errors: list[str] = []
         self._ensure_data_dir()
@@ -142,6 +144,10 @@ class GameDataStore:
                 self.default_game_dir = config.get("default_game_dir", "")
                 self.theme = config.get("theme", "暗夜")
                 self.sort_mode = config.get("sort_mode", "name")
+                self.startup_page = config.get("startup_page", "start_home")
+                if self.startup_page == "safe_home":
+                    self.startup_page = "start_home"
+                self.last_category = config.get("last_category", "启动页")
                 self.frameless_mode = config.get("frameless_mode", False)
             except (json.JSONDecodeError, KeyError, TypeError) as exc:
                 self._backup_unreadable_file(self.config_file, exc)
@@ -172,7 +178,16 @@ class GameDataStore:
 
     def save_config(self):
         self._ensure_data_dir()
-        config = {"privacy_mode": self.privacy_mode, "default_search_engine": self.default_search_engine, "default_game_dir": self.default_game_dir, "theme": self.theme, "sort_mode": self.sort_mode, "frameless_mode": self.frameless_mode}
+        config = {
+            "privacy_mode": self.privacy_mode,
+            "default_search_engine": self.default_search_engine,
+            "default_game_dir": self.default_game_dir,
+            "theme": self.theme,
+            "sort_mode": self.sort_mode,
+            "startup_page": self.startup_page,
+            "last_category": self.last_category,
+            "frameless_mode": self.frameless_mode,
+        }
         self._write_json_atomic(self.config_file, config)
 
     def _write_json_atomic(self, path: str, data: dict):

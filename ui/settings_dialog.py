@@ -18,6 +18,7 @@ class SettingsDialog(QDialog):
     search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
     theme_changed = pyqtSignal(str)          # 主题变更信号
+    startup_page_changed = pyqtSignal(str)   # 启动页变更信号
     frameless_mode_changed = pyqtSignal(bool)  # 无边框模式变更信号
 
     def __init__(self, store, parent=None):
@@ -28,6 +29,7 @@ class SettingsDialog(QDialog):
         self._default_search_engine = store.default_search_engine
         self._default_game_dir = store.default_game_dir
         self._default_theme = store.theme
+        self._startup_page = store.startup_page
         self._frameless_mode = store.frameless_mode
         self._setup_ui()
 
@@ -115,6 +117,31 @@ class SettingsDialog(QDialog):
         layout.addLayout(form2)
         layout.addSpacing(8)
 
+        # 启动页
+        section_startup = QLabel("启动")
+        section_startup.setObjectName("settings-section-title")
+        layout.addWidget(section_startup)
+
+        form_startup = QFormLayout()
+        form_startup.setSpacing(10)
+
+        self.startup_page_combo = QComboBox()
+        self.startup_page_combo.addItem("启动首页", "start_home")
+        self.startup_page_combo.addItem("全部游戏", "all")
+        self.startup_page_combo.addItem("上次浏览位置", "last")
+        idx = self.startup_page_combo.findData(self._startup_page)
+        if idx >= 0:
+            self.startup_page_combo.setCurrentIndex(idx)
+        self.startup_page_combo.currentIndexChanged.connect(self._on_startup_page_changed)
+        form_startup.addRow("默认启动页面:", self.startup_page_combo)
+
+        startup_info = QLabel("启动首页提供最近继续和快速操作，适合作为打开应用时的默认页面。")
+        startup_info.setObjectName("detail-info")
+        form_startup.addRow("", startup_info)
+
+        layout.addLayout(form_startup)
+        layout.addSpacing(8)
+
         # 默认搜索引擎
         section3 = QLabel("搜索")
         section3.setObjectName("settings-section-title")
@@ -176,7 +203,7 @@ class SettingsDialog(QDialog):
         self.privacy_checkbox.toggled.connect(self._on_privacy_toggled)
         layout.addWidget(self.privacy_checkbox)
 
-        privacy_info = QLabel("开启后，R18 游戏的封面将被打马赛克，名称将被遮蔽")
+        privacy_info = QLabel("开启后，已标记内容的封面将被打马赛克，名称将被遮蔽")
         privacy_info.setObjectName("detail-info")
         layout.addWidget(privacy_info)
 
@@ -321,6 +348,8 @@ class SettingsDialog(QDialog):
         name = self._new_cat_input.text().strip()
         if not name:
             return
+        if name == "启动页":
+            return
         if name in self._categories:
             return
         self._categories.append(name)
@@ -353,6 +382,12 @@ class SettingsDialog(QDialog):
     def _on_theme_changed(self, name: str):
         self._default_theme = name
         self.theme_changed.emit(name)
+
+    def _on_startup_page_changed(self, index: int):
+        page = self.startup_page_combo.itemData(index)
+        if page:
+            self._startup_page = page
+            self.startup_page_changed.emit(page)
 
     def _change_game_dir(self):
         start = self.game_dir_input.text() or ""

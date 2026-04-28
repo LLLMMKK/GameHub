@@ -567,6 +567,185 @@ QMainWindow {{
     font-size: 12px;
 }}
 
+/* ===== 启动页 ===== */
+#start-home-scroll {{
+    background-color: {bg_primary};
+    border: none;
+}}
+
+#start-home {{
+    background-color: {bg_primary};
+}}
+
+#start-hero {{
+    background-color: {bg_overlay};
+    border: 1px solid {border_hover};
+    border-radius: 8px;
+}}
+
+#start-kicker {{
+    color: {accent};
+    font-size: 11px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-title {{
+    color: {text_primary};
+    font-size: 34px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-subtitle {{
+    color: {text_muted};
+    font-size: 13px;
+    background: transparent;
+}}
+
+#start-stats {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    min-width: 250px;
+}}
+
+#start-stat {{
+    background-color: {bg_primary};
+    border: 1px solid {border};
+    border-radius: 7px;
+    min-width: 88px;
+}}
+
+#start-stat-value {{
+    color: {text_primary};
+    font-size: 22px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-stat-label {{
+    color: {text_muted};
+    font-size: 11px;
+    background: transparent;
+}}
+
+#start-panel {{
+    background-color: {bg_overlay};
+    border: 1px solid {border};
+    border-radius: 8px;
+}}
+
+#start-panel-title {{
+    color: {text_primary};
+    font-size: 16px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-game-row {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+}}
+
+#start-game-row:hover {{
+    border-color: {accent};
+    background-color: {bg_hover};
+}}
+
+#start-game-initial {{
+    color: {text_on_accent};
+    background-color: {accent};
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+}}
+
+#start-game-title {{
+    color: {text_primary};
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-game-meta {{
+    color: {text_muted};
+    font-size: 11px;
+    background: transparent;
+}}
+
+#start-added-card {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    min-width: 150px;
+    max-width: 210px;
+}}
+
+#start-added-card:hover {{
+    border-color: {accent};
+    background-color: {bg_hover};
+}}
+
+#start-added-initial {{
+    color: {text_on_accent};
+    background-color: {accent_sidebar_gradient};
+    border: 1px solid {border_hover};
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+}}
+
+#start-added-title {{
+    color: {text_primary};
+    font-size: 13px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#start-empty {{
+    color: {text_muted};
+    background: transparent;
+    padding: 14px 4px;
+}}
+
+#start-primary-btn {{
+    background-color: {green};
+    border: 1px solid {green_border};
+    border-radius: 8px;
+    color: {text_on_accent};
+    font-weight: bold;
+    padding: 10px 22px;
+}}
+
+#start-primary-btn:hover {{
+    background-color: {green_hover};
+    border-color: {green_hover};
+}}
+
+#start-secondary-btn,
+#start-quick-btn,
+#start-play-btn {{
+    background-color: {bg_card};
+    border: 1px solid {border_btn_secondary};
+    border-radius: 8px;
+    color: {text_btn_secondary};
+    padding: 9px 16px;
+}}
+
+#start-secondary-btn:hover,
+#start-quick-btn:hover,
+#start-play-btn:hover {{
+    background-color: {bg_hover};
+    border-color: {accent};
+    color: {text_primary};
+}}
+
+#start-play-btn {{
+    min-width: 64px;
+}}
+
 /* 库概览 */
 #library-overview {{
     background-color: {bg_overlay};

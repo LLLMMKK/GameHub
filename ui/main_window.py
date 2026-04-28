@@ -28,6 +28,10 @@ from utils.file_utils import get_exe_name
 
 _SORT_LABELS = ["名称", "游玩时长", "最近游玩", "添加时间"]
 _SORT_MODES = ["name", "play_time", "last_played", "added_time"]
+START_HOME_CATEGORY = "启动页"
+ALL_CATEGORY = "全部"
+RECENT_CATEGORY = "最近游玩"
+OTHER_CATEGORY = "其他"
 
 
 class MainWindow(FramelessResizeMixin, QMainWindow):
@@ -44,7 +48,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.scanner = GameScanner()
 
         # 当前状态
-        self._current_category = "全部"
+        self._current_category = self._resolve_startup_category()
         self._search_query = ""
         self._sort_mode = self.store.sort_mode
         self._selected_game_id = None
@@ -76,9 +80,20 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         if self.store.load_errors:
             QTimer.singleShot(0, self._show_load_errors)
 
+    def _resolve_startup_category(self) -> str:
+        mode = getattr(self.store, "startup_page", "start_home")
+        if mode == "all":
+            return ALL_CATEGORY
+        if mode == "last":
+            last = getattr(self.store, "last_category", START_HOME_CATEGORY)
+            if last == START_HOME_CATEGORY or last in self.store.categories:
+                return last
+        return START_HOME_CATEGORY
+
     @property
     def _default_category(self) -> str:
-        return self._current_category if self._current_category not in ("全部", "最近游玩") else "其他"
+        protected = {START_HOME_CATEGORY, ALL_CATEGORY, RECENT_CATEGORY}
+        return self._current_category if self._current_category not in protected else OTHER_CATEGORY
 
     def _setup_ui(self):
         central = QWidget()
@@ -102,6 +117,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         # 顶部工具栏
         toolbar = self._create_toolbar()
         content_layout.addWidget(toolbar)
+
+        self.home_page = self._create_start_home()
+        content_layout.addWidget(self.home_page, 1)
 
         # 游戏卡片网格
         self.scroll_area = QScrollArea()
@@ -138,6 +156,149 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.detail_page = GameDetailPage()
         self.detail_page.hide()
         content_layout.addWidget(self.detail_page, 1)
+
+    def _create_start_home(self) -> QScrollArea:
+        page = QScrollArea()
+        page.setObjectName("start-home-scroll")
+        page.setWidgetResizable(True)
+        page.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        page.setFrameShape(QFrame.Shape.NoFrame)
+
+        container = QWidget()
+        container.setObjectName("start-home")
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(34, 30, 34, 34)
+        layout.setSpacing(22)
+
+        hero = QWidget()
+        hero.setObjectName("start-hero")
+        hero_layout = QHBoxLayout(hero)
+        hero_layout.setContentsMargins(28, 26, 28, 26)
+        hero_layout.setSpacing(26)
+
+        copy = QVBoxLayout()
+        copy.setSpacing(8)
+        kicker = QLabel("GAMEHUB")
+        kicker.setObjectName("start-kicker")
+        title = QLabel("今晚玩什么？")
+        title.setObjectName("start-title")
+        subtitle = QLabel("从最近继续的项目开始，或把新的游戏加入库。")
+        subtitle.setObjectName("start-subtitle")
+        copy.addWidget(kicker)
+        copy.addWidget(title)
+        copy.addWidget(subtitle)
+
+        action_row = QHBoxLayout()
+        action_row.setSpacing(10)
+        continue_btn = QPushButton("继续上次")
+        continue_btn.setObjectName("start-primary-btn")
+        continue_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        continue_btn.clicked.connect(self._continue_recent_game)
+        self.home_continue_btn = continue_btn
+        action_row.addWidget(continue_btn)
+
+        add_btn = QPushButton("添加游戏")
+        add_btn.setObjectName("start-secondary-btn")
+        add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_btn.clicked.connect(self._add_game)
+        action_row.addWidget(add_btn)
+
+        library_btn = QPushButton("进入游戏库")
+        library_btn.setObjectName("start-secondary-btn")
+        library_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        library_btn.clicked.connect(self._show_library_view)
+        action_row.addWidget(library_btn)
+        action_row.addStretch()
+        copy.addLayout(action_row)
+        hero_layout.addLayout(copy, 1)
+
+        self._home_stats = {}
+        stats = QWidget()
+        stats.setObjectName("start-stats")
+        stats_layout = QGridLayout(stats)
+        stats_layout.setContentsMargins(14, 14, 14, 14)
+        stats_layout.setHorizontalSpacing(10)
+        stats_layout.setVerticalSpacing(10)
+        for index, (key, label) in enumerate((
+            ("visible", "可启动"),
+            ("recent", "近期"),
+            ("completed", "已通关"),
+            ("hours", "小时"),
+        )):
+            item = QWidget()
+            item.setObjectName("start-stat")
+            item_layout = QVBoxLayout(item)
+            item_layout.setContentsMargins(12, 10, 12, 10)
+            item_layout.setSpacing(2)
+            value = QLabel("0")
+            value.setObjectName("start-stat-value")
+            caption = QLabel(label)
+            caption.setObjectName("start-stat-label")
+            item_layout.addWidget(value)
+            item_layout.addWidget(caption)
+            stats_layout.addWidget(item, index // 2, index % 2)
+            self._home_stats[key] = value
+        hero_layout.addWidget(stats)
+        layout.addWidget(hero)
+
+        lower = QHBoxLayout()
+        lower.setSpacing(18)
+
+        recent_panel = QWidget()
+        recent_panel.setObjectName("start-panel")
+        recent_layout = QVBoxLayout(recent_panel)
+        recent_layout.setContentsMargins(18, 18, 18, 18)
+        recent_layout.setSpacing(12)
+        recent_title = QLabel("最近继续")
+        recent_title.setObjectName("start-panel-title")
+        recent_layout.addWidget(recent_title)
+
+        self.home_recent_layout = QVBoxLayout()
+        self.home_recent_layout.setSpacing(8)
+        recent_layout.addLayout(self.home_recent_layout)
+        lower.addWidget(recent_panel, 2)
+
+        quick_panel = QWidget()
+        quick_panel.setObjectName("start-panel")
+        quick_layout = QVBoxLayout(quick_panel)
+        quick_layout.setContentsMargins(18, 18, 18, 18)
+        quick_layout.setSpacing(12)
+        quick_title = QLabel("快速操作")
+        quick_title.setObjectName("start-panel-title")
+        quick_layout.addWidget(quick_title)
+
+        for text, slot in (
+            ("扫描目录", self._scan_directory),
+            ("手动多选", self._manual_select),
+            ("应用设置", self._show_settings),
+        ):
+            btn = QPushButton(text)
+            btn.setObjectName("start-quick-btn")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(slot)
+            quick_layout.addWidget(btn)
+        quick_layout.addStretch()
+        lower.addWidget(quick_panel, 1)
+
+        layout.addLayout(lower)
+
+        added_panel = QWidget()
+        added_panel.setObjectName("start-panel")
+        added_layout = QVBoxLayout(added_panel)
+        added_layout.setContentsMargins(18, 18, 18, 18)
+        added_layout.setSpacing(12)
+        added_title = QLabel("最近加入")
+        added_title.setObjectName("start-panel-title")
+        added_layout.addWidget(added_title)
+
+        self.home_added_layout = QHBoxLayout()
+        self.home_added_layout.setSpacing(10)
+        added_layout.addLayout(self.home_added_layout)
+        layout.addWidget(added_panel)
+        layout.addStretch()
+
+        page.setWidget(container)
+        return page
 
     def _create_overview_panel(self) -> QWidget:
         panel = QWidget()
@@ -237,6 +398,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         sort_label = QLabel("排序:")
         sort_label.setObjectName("sort-label")
         layout.addWidget(sort_label)
+        self.sort_label = sort_label
 
         self.sort_combo = QComboBox()
         self.sort_combo.setObjectName("sort-combo")
@@ -263,6 +425,15 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         scan_action.triggered.connect(self._scan_directory)
         add_btn.clicked.connect(lambda: add_menu.exec(add_btn.mapToGlobal(add_btn.rect().bottomLeft())))
         layout.addWidget(add_btn)
+        self.add_btn = add_btn
+
+        layout.addSpacing(8)
+
+        self.view_switch_btn = QPushButton("进入游戏库")
+        self.view_switch_btn.setObjectName("toolbar-btn")
+        self.view_switch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.view_switch_btn.clicked.connect(self._toggle_home_library)
+        layout.addWidget(self.view_switch_btn)
 
         layout.addSpacing(8)
 
@@ -272,6 +443,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         settings_btn.clicked.connect(self._show_settings)
         layout.addWidget(settings_btn)
+        self.settings_btn = settings_btn
 
         layout.addSpacing(12)
 
@@ -327,9 +499,11 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self._close_detail()
 
     def _compute_category_counts(self) -> dict:
-        counts = {"全部": len(self.store.games)}
+        counts = {
+            ALL_CATEGORY: len(self.store.games),
+        }
         recent = [g for g in self.store.games if g.last_played]
-        counts["最近游玩"] = len(recent)
+        counts[RECENT_CATEGORY] = len(recent)
         for game in self.store.games:
             counts[game.category] = counts.get(game.category, 0) + 1
         return counts
@@ -337,13 +511,16 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
     def _refresh(self):
         """刷新界面"""
         counts = self._compute_category_counts()
+        nav_categories = self.store.categories
 
         # 只在分类列表变化时重建按钮，平时仅更新计数
         current_cats = [b.category_name for b in self.sidebar._buttons]
-        if current_cats != self.store.categories:
-            if self._current_category not in self.store.categories:
-                self._current_category = "全部"
-            self.sidebar.set_categories(self.store.categories, counts, self._current_category)
+        if current_cats != nav_categories:
+            if self._current_category not in nav_categories:
+                self._current_category = START_HOME_CATEGORY
+                self.store.last_category = self._current_category
+                self.store.save_config()
+            self.sidebar.set_categories(nav_categories, counts, self._current_category)
         else:
             self.sidebar.update_counts(counts)
 
@@ -351,7 +528,12 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._refresh_cards(force=True)
 
     def _refresh_cards(self, force=False):
-        """刷新游戏卡片 — force=True 时跳过列数缓存检查"""
+        """刷新游戏卡片 - force=True 时跳过列数缓存检查"""
+        if self._current_category == START_HOME_CATEGORY:
+            self._refresh_start_home()
+            self._apply_view_mode()
+            return
+
         cols = self._calc_columns()
         if not force and cols == self._last_cols and self.card_grid.count() > 0:
             return
@@ -368,6 +550,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         games = self._get_filtered_games()
 
         self._update_overview(games)
+        self._apply_view_mode()
 
         # 空状态
         if not games:
@@ -387,6 +570,176 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self.card_grid.addWidget(card, row, col)
             self._cards[game.id] = card
 
+    def _apply_view_mode(self):
+        in_start = self._current_category == START_HOME_CATEGORY and not self.detail_page.isVisible()
+        self.sidebar.setVisible(not in_start)
+        self.home_page.setVisible(in_start)
+        self.scroll_area.setVisible(not in_start and not self.detail_page.isVisible())
+
+        for widget in (self.sort_label, self.sort_combo, self.add_btn):
+            widget.setVisible(not in_start)
+        self.view_switch_btn.setText("进入游戏库" if in_start else "启动页")
+
+    def _home_visible_games(self) -> list[Game]:
+        return [g for g in self.store.games if not g.is_r18]
+
+    def _recent_home_games(self) -> list[Game]:
+        games = [g for g in self._home_visible_games() if g.last_played]
+        games.sort(key=lambda g: g.last_played or "", reverse=True)
+        if games:
+            return games[:5]
+        games = self._home_visible_games()
+        games.sort(key=lambda g: g.added_time, reverse=True)
+        return games[:5]
+
+    def _recent_added_home_games(self) -> list[Game]:
+        games = self._home_visible_games()
+        games.sort(key=lambda g: g.added_time, reverse=True)
+        return games[:4]
+
+    def _refresh_start_home(self):
+        games = self._home_visible_games()
+        recent = [g for g in games if g.last_played]
+        completed = [g for g in games if g.is_completed]
+        total_hours = int(sum(g.total_play_time for g in games) // 3600)
+
+        self._home_stats["visible"].setText(str(len(games)))
+        self._home_stats["recent"].setText(str(len(recent)))
+        self._home_stats["completed"].setText(str(len(completed)))
+        self._home_stats["hours"].setText(str(total_hours))
+
+        while self.home_recent_layout.count():
+            item = self.home_recent_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        recent_games = self._recent_home_games()
+        self.home_continue_btn.setEnabled(bool(recent_games))
+        if not recent_games:
+            empty = QLabel("还没有可继续的项目")
+            empty.setObjectName("start-empty")
+            self.home_recent_layout.addWidget(empty)
+        else:
+            for game in recent_games:
+                self.home_recent_layout.addWidget(self._create_home_game_row(game))
+            self.home_recent_layout.addStretch()
+
+        while self.home_added_layout.count():
+            item = self.home_added_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        added_games = self._recent_added_home_games()
+        if not added_games:
+            empty = QLabel("导入游戏后会在这里出现")
+            empty.setObjectName("start-empty")
+            self.home_added_layout.addWidget(empty)
+            self.home_added_layout.addStretch()
+            return
+
+        for game in added_games:
+            self.home_added_layout.addWidget(self._create_home_added_card(game))
+        self.home_added_layout.addStretch()
+
+    def _create_home_game_row(self, game: Game) -> QWidget:
+        row = QWidget()
+        row.setObjectName("start-game-row")
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(12)
+
+        initial = QLabel(self._game_initial(game.name))
+        initial.setObjectName("start-game-initial")
+        initial.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        initial.setFixedSize(34, 34)
+        layout.addWidget(initial)
+
+        copy = QVBoxLayout()
+        copy.setSpacing(2)
+        title = QLabel(game.name)
+        title.setObjectName("start-game-title")
+        title.setToolTip(game.name)
+        meta = QLabel(f"{game.format_play_time()} · {game.format_last_played()}")
+        meta.setObjectName("start-game-meta")
+        copy.addWidget(title)
+        copy.addWidget(meta)
+        layout.addLayout(copy, 1)
+
+        play_btn = QPushButton("启动")
+        play_btn.setObjectName("start-play-btn")
+        play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        play_btn.clicked.connect(lambda checked=False, game_id=game.id: self._toggle_game(game_id))
+        layout.addWidget(play_btn)
+        return row
+
+    def _create_home_added_card(self, game: Game) -> QWidget:
+        card = QWidget()
+        card.setObjectName("start-added-card")
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        card.mousePressEvent = lambda event, game_id=game.id: self._show_detail(game_id)
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(8)
+
+        initial = QLabel(self._game_initial(game.name))
+        initial.setObjectName("start-added-initial")
+        initial.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        initial.setFixedSize(42, 42)
+        layout.addWidget(initial)
+
+        title = QLabel(game.name)
+        title.setObjectName("start-added-title")
+        title.setToolTip(game.name)
+        title.setWordWrap(True)
+        title.setFixedHeight(36)
+        layout.addWidget(title)
+
+        meta = QLabel(game.category if game.category != OTHER_CATEGORY else "未分类")
+        meta.setObjectName("start-game-meta")
+        layout.addWidget(meta)
+        return card
+
+    def _game_initial(self, name: str) -> str:
+        return name[:1].upper() if name else "G"
+
+    def _continue_recent_game(self):
+        games = self._recent_home_games()
+        if games:
+            self._toggle_game(games[0].id)
+
+    def _toggle_home_library(self):
+        if self._current_category == START_HOME_CATEGORY:
+            self._show_library_view()
+        else:
+            self._show_start_home()
+
+    def _show_library_view(self):
+        if self.detail_page.isVisible():
+            self.detail_page.hide()
+            self._selected_game_id = None
+        last = getattr(self.store, "last_category", ALL_CATEGORY)
+        if last == START_HOME_CATEGORY or last not in self.store.categories:
+            last = ALL_CATEGORY
+        self._current_category = last
+        self.store.last_category = last
+        self.store.save_config()
+        self._search_query = ""
+        self.sidebar.search_box.clear()
+        self.sidebar._select_category(self._current_category)
+        self._refresh_cards(force=True)
+
+    def _show_start_home(self):
+        if self.detail_page.isVisible():
+            self.detail_page.hide()
+            self._selected_game_id = None
+        self._current_category = START_HOME_CATEGORY
+        self.store.last_category = START_HOME_CATEGORY
+        self.store.save_config()
+        self._search_query = ""
+        self.sidebar.search_box.clear()
+        self._refresh_cards(force=True)
+
     def _calc_columns(self):
         if self.isVisible():
             viewport_width = self.scroll_area.viewport().width()
@@ -399,7 +752,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             games = self.store.search_games(self._search_query)
         else:
             games = self.store.get_games_by_category(self._current_category)
-            if self._current_category == "最近游玩":
+            if self._current_category == RECENT_CATEGORY:
                 return games
         return self._sort_games(games)
 
@@ -427,10 +780,10 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         if self._search_query:
             self.overview_title.setText(f"搜索「{self._search_query}」")
             self.overview_subtitle.setText("从当前游戏库中筛选匹配项")
-        elif self._current_category == "全部":
+        elif self._current_category == ALL_CATEGORY:
             self.overview_title.setText("全部游戏")
             self.overview_subtitle.setText("整理、启动和回顾你的本地游戏库")
-        elif self._current_category == "最近游玩":
+        elif self._current_category == RECENT_CATEGORY:
             self.overview_title.setText("最近游玩")
             self.overview_subtitle.setText("快速回到近期打开过的游戏")
         else:
@@ -447,6 +800,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def _on_category_changed(self, category: str):
         self._current_category = category
+        self.store.last_category = category
+        self.store.save_config()
         self._search_query = ""
         self.sidebar.search_box.clear()
         self._refresh_cards(force=True)
@@ -460,13 +815,14 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         if game:
             self._selected_game_id = game_id
             self.detail_page.set_game(game, self.launcher.is_running(game_id))
+            self.home_page.hide()
             self.scroll_area.hide()
             self.detail_page.show()
 
     def _close_detail(self):
         self.detail_page.hide()
-        self.scroll_area.show()
         self._selected_game_id = None
+        self._apply_view_mode()
 
     def _toggle_game(self, game_id: str):
         game = self.store.get_game(game_id)
@@ -650,6 +1006,10 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.store.save_config()
         QApplication.instance().setStyleSheet(THEMES.get(theme_name, THEMES["暗夜"]))
 
+    def _on_startup_page_changed(self, page: str):
+        self.store.startup_page = page
+        self.store.save_config()
+
     def _toggle_maximize(self):
         if self.isMaximized():
             self.showNormal()
@@ -735,6 +1095,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         dialog.search_engine_changed.connect(self._on_search_engine_changed)
         dialog.game_dir_changed.connect(self._on_game_dir_changed)
         dialog.theme_changed.connect(self._on_theme_changed)
+        dialog.startup_page_changed.connect(self._on_startup_page_changed)
         dialog.frameless_mode_changed.connect(self._on_frameless_mode_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._preview_categories)
@@ -743,27 +1104,31 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._sync_categories(dialog._categories)
 
     def _preview_categories(self, categories: list[str]):
-        counts = {cat: 0 for cat in categories}
+        nav_categories = categories
+        counts = {cat: 0 for cat in nav_categories}
         for game in self.store.games:
             cat = game.category if game.category in counts else "其他"
             if cat in counts:
                 counts[cat] += 1
-        counts["全部"] = len(self.store.games)
-        counts["最近游玩"] = sum(1 for g in self.store.games if g.last_played)
-        preview_current = self._current_category if self._current_category in categories else "全部"
-        self.sidebar.set_categories(categories, counts, preview_current)
+        counts[ALL_CATEGORY] = len(self.store.games)
+        counts[RECENT_CATEGORY] = sum(1 for g in self.store.games if g.last_played)
+        preview_current = self._current_category if self._current_category in nav_categories else ALL_CATEGORY
+        self.sidebar.set_categories(nav_categories, counts, preview_current)
 
     def _sync_categories(self, new_cats: list[str]):
         """同步分类列表到 store，处理被删除分类的游戏"""
+        new_cats = [cat for cat in new_cats if cat != START_HOME_CATEGORY]
         removed = [c for c in self.store.categories if c not in new_cats]
         self.store.categories = list(new_cats)
-        if self._current_category not in self.store.categories:
-            self._current_category = "全部"
+        if self._current_category != START_HOME_CATEGORY and self._current_category not in self.store.categories:
+            self._current_category = START_HOME_CATEGORY
+            self.store.last_category = self._current_category
         for cat in removed:
             for g in self.store.games:
                 if g.category == cat:
                     g.category = "其他"
         self.store.save()
+        self.store.save_config()
         self._refresh()
 
     def _show_load_errors(self):

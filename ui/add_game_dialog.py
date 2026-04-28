@@ -102,8 +102,8 @@ class AddGameDialog(QDialog):
         self.desc_input.setMaximumHeight(100)
         form.addRow("游戏介绍:", self.desc_input)
 
-        # R18 标记
-        self.r18_checkbox = QCheckBox("标记为 R18 游戏")
+        # 私密内容标记
+        self.r18_checkbox = QCheckBox("标记为私密内容")
         self.r18_checkbox.setObjectName("r18-checkbox")
         form.addRow("", self.r18_checkbox)
 

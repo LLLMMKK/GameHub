@@ -249,7 +249,7 @@ class GameCard(QWidget):
         self.title_label.setToolTip(self.game.name)
         info_layout.addWidget(self.title_label)
 
-        # 底部行：分类标签 + R18 标签 + 时长
+        # 底部行：分类标签 + 私密标签 + 时长
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(6)
 
@@ -257,7 +257,7 @@ class GameCard(QWidget):
         self.category_label.setObjectName("card-cat-tag")
         bottom_row.addWidget(self.category_label)
 
-        self.r18_label = QLabel("R18")
+        self.r18_label = QLabel("私密")
         self.r18_label.setObjectName("card-r18-tag")
         bottom_row.addWidget(self.r18_label)
 
@@ -292,7 +292,7 @@ class GameCard(QWidget):
         if self.game.cover_path and os.path.exists(self.game.cover_path):
             pixmap = _load_cover_pixmap(self.game.cover_path)
             if not pixmap.isNull():
-                # 隐私模式下 R18 游戏封面打马赛克
+                # 隐私模式下私密内容封面打马赛克
                 # 先 scale 到目标尺寸再 mosaic，效果清晰锐利
                 scaled = fit_cover_pixmap(pixmap, self.CARD_WIDTH, self.COVER_HEIGHT)
                 if self.game.is_r18 and self._privacy_mode:
@@ -301,7 +301,7 @@ class GameCard(QWidget):
                 return
 
         default = generate_default_cover(self.game.name, self.CARD_WIDTH, self.COVER_HEIGHT)
-        # 隐私模式下 R18 默认封面也打马赛克
+        # 隐私模式下私密默认封面也打马赛克
         if self.game.is_r18 and self._privacy_mode:
             default = apply_mosaic(default, block_size=9)
         self.cover_label.setPixmap(round_top_corners(default))
