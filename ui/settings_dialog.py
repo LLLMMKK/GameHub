@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from ui.widgets.frameless_dialog import FramelessDialogTitleBar, apply_dialog_frameless
+
 # 不可删除的分类
 FIXED_CATEGORIES = {"全部", "最近游玩"}
 
@@ -15,7 +17,6 @@ class SettingsDialog(QDialog):
 
     privacy_mode_changed = pyqtSignal(bool)  # 隐私模式变更信号
     categories_changed = pyqtSignal(list)    # 分类变更信号
-    search_engine_changed = pyqtSignal(str)  # 默认搜索引擎变更信号
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
     theme_changed = pyqtSignal(str)          # 主题变更信号
     startup_page_changed = pyqtSignal(str)   # 启动页变更信号
@@ -26,7 +27,6 @@ class SettingsDialog(QDialog):
         self.data_dir = store.data_dir
         self._privacy_mode = store.privacy_mode
         self._categories = list(store.categories)
-        self._default_search_engine = store.default_search_engine
         self._default_game_dir = store.default_game_dir
         self._default_theme = store.theme
         self._startup_page = store.startup_page
@@ -35,24 +35,30 @@ class SettingsDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle("设置")
-        self.setMinimumWidth(520)
-        self.setMinimumHeight(440)
+        self.setMinimumSize(600, 520)
+        self.resize(680, 620)
         self.setModal(True)
+        self.setSizeGripEnabled(True)
+        if self._frameless_mode:
+            apply_dialog_frameless(self)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 12, 14, 14)
         layout.setSpacing(16)
 
-        # 标题
-        title = QLabel("设置")
-        title.setObjectName("dialog-title")
-        layout.addWidget(title)
+        if self._frameless_mode:
+            layout.addWidget(FramelessDialogTitleBar("设置", self))
+        else:
+            title = QLabel("设置")
+            title.setObjectName("dialog-title")
+            layout.addWidget(title)
 
         # 标签页
         tabs = QTabWidget()
-        tabs.addTab(self._create_general_tab(), "常规")
-        tabs.addTab(self._create_appearance_tab(), "外观")
-        tabs.addTab(self._create_categories_tab(), "分类")
-        tabs.addTab(self._create_about_tab(), "关于")
+        tabs.addTab(self._scrollable_tab(self._create_general_tab()), "常规")
+        tabs.addTab(self._scrollable_tab(self._create_appearance_tab()), "外观")
+        tabs.addTab(self._scrollable_tab(self._create_categories_tab()), "分类")
+        tabs.addTab(self._scrollable_tab(self._create_about_tab()), "关于")
         layout.addWidget(tabs)
 
         # 底部按钮
@@ -65,6 +71,15 @@ class SettingsDialog(QDialog):
         btn_row.addWidget(close_btn)
 
         layout.addLayout(btn_row)
+
+    def _scrollable_tab(self, page: QWidget) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setObjectName("settings-tab-scroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
 
     def _create_general_tab(self) -> QWidget:
         page = QWidget()
@@ -142,25 +157,6 @@ class SettingsDialog(QDialog):
         layout.addLayout(form_startup)
         layout.addSpacing(8)
 
-        # 默认搜索引擎
-        section3 = QLabel("搜索")
-        section3.setObjectName("settings-section-title")
-        layout.addWidget(section3)
-
-        form3 = QFormLayout()
-        form3.setSpacing(10)
-
-        self.search_engine_combo = QComboBox()
-        self.search_engine_combo.addItem("百度", "baidu")
-        self.search_engine_combo.addItem("Bing", "bing")
-        self.search_engine_combo.addItem("Google", "google")
-        idx = self.search_engine_combo.findData(self._default_search_engine)
-        if idx >= 0:
-            self.search_engine_combo.setCurrentIndex(idx)
-        self.search_engine_combo.currentIndexChanged.connect(self._on_search_engine_changed)
-        form3.addRow("默认搜索引擎:", self.search_engine_combo)
-
-        layout.addLayout(form3)
         layout.addStretch()
         return page
 
@@ -372,12 +368,6 @@ class SettingsDialog(QDialog):
     def _on_frameless_toggled(self, checked: bool):
         self._frameless_mode = checked
         self.frameless_mode_changed.emit(checked)
-
-    def _on_search_engine_changed(self, index: int):
-        engine = self.search_engine_combo.itemData(index)
-        if engine:
-            self._default_search_engine = engine
-            self.search_engine_changed.emit(engine)
 
     def _on_theme_changed(self, name: str):
         self._default_theme = name

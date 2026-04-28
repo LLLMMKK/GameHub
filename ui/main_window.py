@@ -991,11 +991,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             running = self._selected_game_id and self.launcher.is_running(self._selected_game_id)
             self.detail_page.set_game(self.detail_page.game, running)
 
-    def _on_search_engine_changed(self, engine: str):
-        """更新默认搜索引擎"""
-        self.store.default_search_engine = engine
-        self.store.save_config()
-
     def _on_game_dir_changed(self, path: str):
         """更新默认游戏库目录"""
         self.store.default_game_dir = path
@@ -1086,13 +1081,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def _show_settings(self):
         dialog = SettingsDialog(self.store, self)
-        # 确保 dialog 有独立窗口装饰，不受 frameless 父窗口影响
-        flags = Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint | Qt.WindowType.WindowTitleHint
         if self.store.frameless_mode:
-            dialog.setWindowFlags(flags)
             dialog.move(self.geometry().center() - dialog.rect().center())
         dialog.privacy_mode_changed.connect(self._toggle_privacy)
-        dialog.search_engine_changed.connect(self._on_search_engine_changed)
         dialog.game_dir_changed.connect(self._on_game_dir_changed)
         dialog.theme_changed.connect(self._on_theme_changed)
         dialog.startup_page_changed.connect(self._on_startup_page_changed)

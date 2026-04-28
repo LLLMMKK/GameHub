@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt
 
 from core.game_model import Game, GameDataStore
 from ui.game_card import generate_default_cover
+from ui.widgets.frameless_dialog import FramelessDialogTitleBar, apply_dialog_frameless
 from utils.file_utils import get_cover_dir, save_cover
 
 
@@ -27,17 +28,25 @@ class AddGameDialog(QDialog):
             self._load_game(game)
 
     def _setup_ui(self):
-        self.setWindowTitle("编辑游戏" if self.game else "添加游戏")
-        self.setMinimumWidth(480)
+        title_text = "编辑游戏" if self.game else "添加游戏"
+        self.setWindowTitle(title_text)
+        self.setMinimumSize(520, 560)
+        self.resize(560, 620)
         self.setModal(True)
+        self.setSizeGripEnabled(True)
+        if self.store.frameless_mode:
+            apply_dialog_frameless(self)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 12, 14, 14)
         layout.setSpacing(16)
 
-        # 标题
-        title = QLabel("编辑游戏" if self.game else "添加游戏")
-        title.setObjectName("dialog-title")
-        layout.addWidget(title)
+        if self.store.frameless_mode:
+            layout.addWidget(FramelessDialogTitleBar(title_text, self))
+        else:
+            title = QLabel(title_text)
+            title.setObjectName("dialog-title")
+            layout.addWidget(title)
 
         # 表单
         form = QFormLayout()

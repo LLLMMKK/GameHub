@@ -119,7 +119,6 @@ class GameDataStore:
         self._games_by_id: dict[str, Game] = {}  # O(1) 查找
         self.categories: list[str] = list(DEFAULT_CATEGORIES)
         self.privacy_mode: bool = False
-        self.default_search_engine: str = "baidu"
         self.default_game_dir: str = ""
         self.theme: str = "暗夜"
         self.sort_mode: str = "name"
@@ -140,7 +139,6 @@ class GameDataStore:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     config = json.load(f)
                 self.privacy_mode = config.get("privacy_mode", False)
-                self.default_search_engine = config.get("default_search_engine", "baidu")
                 self.default_game_dir = config.get("default_game_dir", "")
                 self.theme = config.get("theme", "暗夜")
                 self.sort_mode = config.get("sort_mode", "name")
@@ -180,7 +178,6 @@ class GameDataStore:
         self._ensure_data_dir()
         config = {
             "privacy_mode": self.privacy_mode,
-            "default_search_engine": self.default_search_engine,
             "default_game_dir": self.default_game_dir,
             "theme": self.theme,
             "sort_mode": self.sort_mode,

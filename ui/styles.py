@@ -1046,11 +1046,56 @@ QDialog {{
     background-color: {bg_primary};
 }}
 
+QDialog[frameless="true"] {{
+    border: 1px solid {border_hover};
+    border-radius: 8px;
+}}
+
 #dialog-title {{
     color: {text_primary};
     font-size: 22px;
     font-weight: bold;
     padding-bottom: 16px;
+}}
+
+#dialog-titlebar {{
+    background-color: {bg_toolbar_top};
+    border: 1px solid {border};
+    border-radius: 8px;
+}}
+
+#dialog-titlebar-title {{
+    color: {text_primary};
+    font-size: 15px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#dialog-close-btn {{
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: {text_secondary};
+}}
+
+#dialog-close-btn:hover {{
+    background-color: #c0392b;
+    color: #ffffff;
+}}
+
+#settings-tab-scroll {{
+    background: transparent;
+    border: none;
+}}
+
+#settings-tab-scroll QWidget {{
+    background: transparent;
+}}
+
+QSizeGrip {{
+    background: transparent;
+    width: 14px;
+    height: 14px;
 }}
 
 #dialog-hint {{
