@@ -53,6 +53,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._sort_mode = self.store.sort_mode
         self._selected_game_id = None
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
+        self._library_games: list[Game] = []
+        self._rendered_count = 0
+        self._card_batch_size = 36
         self._last_cols = 0  # 上次列数，避免列数不变时重建卡片
 
         self.init_resize_state()
@@ -126,6 +129,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.verticalScrollBar().valueChanged.connect(self._maybe_load_more_cards)
 
         self.grid_container = QWidget()
         self.grid_layout = QVBoxLayout(self.grid_container)
@@ -539,15 +543,12 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             return
         self._last_cols = cols
 
-        # 清除旧卡片
-        self._cards.clear()
-        while self.card_grid.count():
-            item = self.card_grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self._clear_card_grid()
 
         # 获取要显示的游戏
         games = self._get_filtered_games()
+        self._library_games = games
+        self._rendered_count = 0
 
         self._update_overview(games)
         self._apply_view_mode()
@@ -559,7 +560,26 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
         self.empty_state.hide()
 
-        for i, game in enumerate(games):
+        self.scroll_area.verticalScrollBar().setValue(0)
+        self._render_next_card_batch()
+
+    def _clear_card_grid(self):
+        self._cards.clear()
+        while self.card_grid.count():
+            item = self.card_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def _render_next_card_batch(self):
+        if self._rendered_count >= len(self._library_games):
+            return
+
+        cols = max(1, self._last_cols or self._calc_columns())
+        start = self._rendered_count
+        end = min(len(self._library_games), start + self._card_batch_size)
+
+        for i in range(start, end):
+            game = self._library_games[i]
             card = GameCard(game)
             card.set_privacy_mode(self.store.privacy_mode)
             card.play_clicked.connect(self._toggle_game)
@@ -569,6 +589,18 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             row, col = divmod(i, cols)
             self.card_grid.addWidget(card, row, col)
             self._cards[game.id] = card
+        self._rendered_count = end
+
+        QTimer.singleShot(0, self._maybe_load_more_cards)
+
+    def _maybe_load_more_cards(self, value=None):
+        if self._current_category == START_HOME_CATEGORY or self.detail_page.isVisible():
+            return
+        if self._rendered_count >= len(self._library_games):
+            return
+        bar = self.scroll_area.verticalScrollBar()
+        if bar.maximum() <= 0 or bar.value() >= bar.maximum() - 900:
+            self._render_next_card_batch()
 
     def _apply_view_mode(self):
         in_start = self._current_category == START_HOME_CATEGORY and not self.detail_page.isVisible()
@@ -938,22 +970,21 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         seen = set()
 
         while True:
-            start_dir = self.store.default_game_dir or ""
-            files, _ = QFileDialog.getOpenFileNames(
-                self, "选择游戏可执行文件", start_dir,
-                "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
-            )
-            if not files:
-                if not pending:
+            if not pending:
+                start_dir = self.store.default_game_dir or ""
+                files, _ = QFileDialog.getOpenFileNames(
+                    self, "选择游戏可执行文件", start_dir,
+                    "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
+                )
+                if not files:
                     return
-                break
 
-            for path in files:
-                norm = os.path.normpath(path).lower()
-                if norm in seen:
-                    continue
-                seen.add(norm)
-                pending.append(Game(name=get_exe_name(path), exe_path=path, category=cat))
+                for path in files:
+                    norm = os.path.normpath(path).lower()
+                    if norm in seen:
+                        continue
+                    seen.add(norm)
+                    pending.append(Game(name=get_exe_name(path), exe_path=path, category=cat))
 
             dlg = ScanResultDialog(pending, self, allow_add_more=True,
                                    existing_paths=existing_paths, existing_names=existing_names)
@@ -961,6 +992,19 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             pending = dlg.get_selected_games()
 
             if action == ScanResultDialog.ADD_MORE_RESULT:
+                start_dir = self.store.default_game_dir or ""
+                files, _ = QFileDialog.getOpenFileNames(
+                    self, "继续选择游戏可执行文件", start_dir,
+                    "可执行文件 (*.exe *.bat *.cmd);;所有文件 (*.*)"
+                )
+                if not files:
+                    continue
+                for path in files:
+                    norm = os.path.normpath(path).lower()
+                    if norm in seen:
+                        continue
+                    seen.add(norm)
+                    pending.append(Game(name=get_exe_name(path), exe_path=path, category=cat))
                 continue
             if action == QDialog.DialogCode.Accepted:
                 for g in pending:
