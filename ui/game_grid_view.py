@@ -379,6 +379,7 @@ class GameGridView(QListView):
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.verticalScrollBar().setSingleStep(24)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
@@ -464,6 +465,21 @@ class GameGridView(QListView):
                 event.accept()
                 return
         super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event):
+        bar = self.verticalScrollBar()
+        pixel_delta = event.pixelDelta().y()
+        angle_delta = event.angleDelta().y()
+        if pixel_delta:
+            distance = -int(pixel_delta * 0.55)
+        elif angle_delta:
+            distance = -int(angle_delta / 120 * 72)
+        else:
+            super().wheelEvent(event)
+            return
+
+        bar.setValue(bar.value() + distance)
+        event.accept()
 
     def _card_row_at(self, pos) -> int:
         index = self.indexAt(pos)

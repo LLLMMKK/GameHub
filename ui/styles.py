@@ -1028,14 +1028,14 @@ QPushButton#play-btn[running="true"]:hover {{
 /* ===== 滚动条 ===== */
 QScrollBar:vertical {{
     background-color: {scrollbar_bg};
-    width: 6px;
+    width: 12px;
     border: none;
-    margin: 4px 2px;
+    margin: 4px 1px;
 }}
 
 QScrollBar::handle:vertical {{
     background-color: {scrollbar_handle};
-    border-radius: 3px;
+    border-radius: 5px;
     min-height: 40px;
 }}
 
@@ -1053,14 +1053,14 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
 
 QScrollBar:horizontal {{
     background-color: {scrollbar_bg};
-    height: 6px;
+    height: 10px;
     border: none;
-    margin: 2px 4px;
+    margin: 1px 4px;
 }}
 
 QScrollBar::handle:horizontal {{
     background-color: {scrollbar_handle};
-    border-radius: 3px;
+    border-radius: 5px;
     min-width: 40px;
 }}
 
