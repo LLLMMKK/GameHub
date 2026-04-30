@@ -146,10 +146,9 @@ class GameCardDelegate(QStyledItemDelegate):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
             cursor_hovered = self._is_cursor_over_card(index)
-            state_hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
             tracked_hovered = index.row() == self._hover_row and self._hover_opacity > 0.0
-            hovered = cursor_hovered or state_hovered or tracked_hovered
-            hover_opacity = 1.0 if cursor_hovered or state_hovered else self._hover_opacity
+            hovered = cursor_hovered or tracked_hovered
+            hover_opacity = 1.0 if cursor_hovered else self._hover_opacity
             selected = bool(option.state & QStyle.StateFlag.State_Selected)
             card = self.card_rect(option.rect)
             cover = QRect(card.x(), card.y(), self.CARD_WIDTH, self.COVER_HEIGHT)
@@ -374,7 +373,6 @@ class GameGridView(QListView):
         self.viewport().setMouseTracking(True)
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().installEventFilter(self)
-        self.entered.connect(self._on_index_entered)
         self.setToolTip("")
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -450,10 +448,6 @@ class GameGridView(QListView):
                 self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
                 self.viewport().update()
         return super().eventFilter(obj, event)
-
-    def _on_index_entered(self, index: QModelIndex):
-        if index.isValid():
-            self._set_hover_row(index.row())
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
