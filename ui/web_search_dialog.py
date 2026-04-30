@@ -3,12 +3,14 @@ import os
 import tempfile
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTextEdit, QMessageBox, QFrame
+    QPushButton, QLineEdit, QTextEdit, QMessageBox, QFrame,
+    QWidget, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QPixmap
 
 from ui.game_card import fit_cover_pixmap
+from ui.widgets.frameless_dialog import FramelessDialogTitleBar, apply_dialog_frameless
 from utils.file_utils import save_cover
 
 class ImageDownloader(QThread):
@@ -51,28 +53,73 @@ class WebSearchDialog(QDialog):
         self._cached_pixmap = None  # 缓存已下载的图片
         self._cached_url = ""
         self._close_after_download = False
+        window = parent.window() if parent else None
+        store = getattr(window, "store", None)
+        self._frameless_mode = bool(getattr(store, "frameless_mode", False))
         self._setup_ui()
 
     def _setup_ui(self):
         self.setWindowTitle(f"搜索与选取: {self._game_name}")
-        self.setMinimumWidth(560)
+        self.setMinimumSize(640, 540)
+        self.resize(700, 640)
         self.setModal(True)
+        self.setSizeGripEnabled(True)
+        if self._frameless_mode:
+            apply_dialog_frameless(self)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(12)
+        layout.setContentsMargins(14, 12, 14, 14)
+
+        if self._frameless_mode:
+            layout.addWidget(FramelessDialogTitleBar("素材导入", self))
+        else:
+            title = QLabel("素材导入")
+            title.setObjectName("dialog-title")
+            layout.addWidget(title)
 
         import webbrowser
         from urllib.parse import quote
 
-        # === 图片搜索 ===
-        img_header = QLabel("图片搜索")
-        img_header.setObjectName("dialog-title")
-        layout.addWidget(img_header)
+        scroll = QScrollArea()
+        scroll.setObjectName("resource-scroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        hint1 = QLabel("点击下方按钮在浏览器中搜索图片，然后回来粘贴图片链接")
+        body = QWidget()
+        body.setObjectName("resource-body")
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(10, 10, 10, 10)
+        body_layout.setSpacing(14)
+
+        intro = QWidget()
+        intro.setObjectName("resource-intro")
+        intro_layout = QVBoxLayout(intro)
+        intro_layout.setContentsMargins(18, 16, 18, 16)
+        intro_layout.setSpacing(4)
+        intro_title = QLabel(self._game_name)
+        intro_title.setObjectName("resource-title")
+        intro_hint = QLabel("从外部搜索获取封面或资料，回到这里粘贴链接和文本即可保存。")
+        intro_hint.setObjectName("dialog-hint")
+        intro_layout.addWidget(intro_title)
+        intro_layout.addWidget(intro_hint)
+        body_layout.addWidget(intro)
+
+        # === 图片搜索 ===
+        img_section = QFrame()
+        img_section.setObjectName("resource-section")
+        img_layout = QVBoxLayout(img_section)
+        img_layout.setContentsMargins(18, 18, 18, 18)
+        img_layout.setSpacing(12)
+
+        img_header = QLabel("封面图片")
+        img_header.setObjectName("resource-section-title")
+        img_layout.addWidget(img_header)
+
+        hint1 = QLabel("打开图片搜索后复制图片地址，再粘贴到下方输入框。")
         hint1.setObjectName("dialog-hint")
-        layout.addWidget(hint1)
+        img_layout.addWidget(hint1)
 
         img_row1 = QHBoxLayout()
         img_row1.setSpacing(10)
@@ -88,7 +135,7 @@ class WebSearchDialog(QDialog):
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             img_row1.addWidget(btn)
 
-        layout.addLayout(img_row1)
+        img_layout.addLayout(img_row1)
 
         # 粘贴图片URL
         url_row = QHBoxLayout()
@@ -108,7 +155,7 @@ class WebSearchDialog(QDialog):
         use_cover_btn.clicked.connect(self._use_as_cover)
         url_row.addWidget(use_cover_btn)
 
-        layout.addLayout(url_row)
+        img_layout.addLayout(url_row)
 
         # 图片预览
         self.cover_preview = QLabel()
@@ -122,27 +169,28 @@ class WebSearchDialog(QDialog):
         preview_row.addStretch()
         preview_row.addWidget(self.cover_preview)
         preview_row.addStretch()
-        layout.addLayout(preview_row)
+        img_layout.addLayout(preview_row)
 
         # 下载状态
         self._status_label = QLabel("")
         self._status_label.setObjectName("dialog-status")
-        layout.addWidget(self._status_label)
-
-        # 分隔线
-        div1 = QFrame()
-        div1.setObjectName("divider")
-        div1.setFixedHeight(1)
-        layout.addWidget(div1)
+        img_layout.addWidget(self._status_label)
+        body_layout.addWidget(img_section)
 
         # === 文本搜索 ===
-        txt_header = QLabel("文本搜索")
-        txt_header.setObjectName("dialog-title")
-        layout.addWidget(txt_header)
+        txt_section = QFrame()
+        txt_section.setObjectName("resource-section")
+        txt_layout = QVBoxLayout(txt_section)
+        txt_layout.setContentsMargins(18, 18, 18, 18)
+        txt_layout.setSpacing(12)
 
-        hint2 = QLabel("点击下方按钮在浏览器中搜索，然后回来粘贴游戏介绍文本")
+        txt_header = QLabel("介绍文本")
+        txt_header.setObjectName("resource-section-title")
+        txt_layout.addWidget(txt_header)
+
+        hint2 = QLabel("打开资料来源后复制介绍文本，也可以直接手动整理。")
         hint2.setObjectName("dialog-hint")
-        layout.addWidget(hint2)
+        txt_layout.addWidget(hint2)
 
         txt_row1 = QHBoxLayout()
         txt_row1.setSpacing(10)
@@ -159,7 +207,7 @@ class WebSearchDialog(QDialog):
             btn.clicked.connect(lambda checked, u=url: webbrowser.open(u))
             txt_row1.addWidget(btn)
 
-        layout.addLayout(txt_row1)
+        txt_layout.addLayout(txt_row1)
 
         # 第二行：游戏特化搜索
         txt_row2 = QHBoxLayout()
@@ -177,13 +225,13 @@ class WebSearchDialog(QDialog):
             txt_row2.addWidget(btn)
 
         txt_row2.addStretch()
-        layout.addLayout(txt_row2)
+        txt_layout.addLayout(txt_row2)
 
         # 粘贴介绍文本
         self.desc_input = QTextEdit()
         self.desc_input.setPlaceholderText("粘贴或输入游戏介绍...")
-        self.desc_input.setMaximumHeight(120)
-        layout.addWidget(self.desc_input)
+        self.desc_input.setMinimumHeight(130)
+        txt_layout.addWidget(self.desc_input)
 
         desc_row = QHBoxLayout()
         desc_row.addStretch()
@@ -200,10 +248,14 @@ class WebSearchDialog(QDialog):
         use_desc_btn.clicked.connect(self._use_as_desc)
         desc_row.addWidget(use_desc_btn)
 
-        layout.addLayout(desc_row)
+        txt_layout.addLayout(desc_row)
+        body_layout.addWidget(txt_section)
+        body_layout.addStretch()
+
+        scroll.setWidget(body)
+        layout.addWidget(scroll, 1)
 
         # 关闭
-        layout.addSpacing(8)
         close_row = QHBoxLayout()
         close_row.addStretch()
         close_btn = QPushButton("关闭")

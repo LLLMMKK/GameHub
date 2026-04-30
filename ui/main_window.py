@@ -92,8 +92,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._selected_game_id = None
         self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
         self._library_games: list[Game] = []
-        self._rendered_count = 0
-        self._card_batch_size = 36
+        self._visible_card_start = 0
+        self._visible_card_end = 0
+        self._virtual_buffer_rows = 2
         self._last_cols = 0  # 上次列数，避免列数不变时重建卡片
 
         self.init_resize_state()
@@ -180,9 +181,19 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.grid_layout.addWidget(self.overview_panel)
 
         # 卡片网格
+        self.card_top_spacer = QWidget()
+        self.card_top_spacer.setObjectName("virtual-card-spacer")
+        self.card_top_spacer.setFixedHeight(0)
+        self.grid_layout.addWidget(self.card_top_spacer)
+
         self.card_grid = QGridLayout()
         self.card_grid.setSpacing(16)
         self.grid_layout.addLayout(self.card_grid)
+
+        self.card_bottom_spacer = QWidget()
+        self.card_bottom_spacer.setObjectName("virtual-card-spacer")
+        self.card_bottom_spacer.setFixedHeight(0)
+        self.grid_layout.addWidget(self.card_bottom_spacer)
 
         # 空状态提示
         self.empty_state = self._create_empty_state()
@@ -570,14 +581,15 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._refresh_cards(force=True)
 
     def _refresh_cards(self, force=False):
-        """刷新游戏卡片 - force=True 时跳过列数缓存检查"""
+        """刷新游戏卡片。网格只渲染当前视口附近的卡片，避免大库一次性创建 QWidget。"""
         if self._current_category == START_HOME_CATEGORY:
             self._refresh_start_home()
             self._apply_view_mode()
             return
 
         cols = self._calc_columns()
-        if not force and cols == self._last_cols and self.card_grid.count() > 0:
+        if not force and cols == self._last_cols and self._library_games:
+            self._render_visible_cards(force=True)
             return
         self._last_cols = cols
 
@@ -586,7 +598,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         # 获取要显示的游戏
         games = self._get_filtered_games()
         self._library_games = games
-        self._rendered_count = 0
+        self._visible_card_start = 0
+        self._visible_card_end = 0
 
         self._update_overview(games)
         self._apply_view_mode()
@@ -599,7 +612,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.empty_state.hide()
 
         self.scroll_area.verticalScrollBar().setValue(0)
-        self._render_next_card_batch()
+        self._render_visible_cards(force=True)
 
     def _clear_card_grid(self):
         self._cards.clear()
@@ -607,14 +620,37 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             item = self.card_grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+        if hasattr(self, "card_top_spacer"):
+            self.card_top_spacer.setFixedHeight(0)
+        if hasattr(self, "card_bottom_spacer"):
+            self.card_bottom_spacer.setFixedHeight(0)
 
-    def _render_next_card_batch(self):
-        if self._rendered_count >= len(self._library_games):
+    def _render_visible_cards(self, force=False):
+        if not self._library_games:
             return
 
         cols = max(1, self._last_cols or self._calc_columns())
-        start = self._rendered_count
-        end = min(len(self._library_games), start + self._card_batch_size)
+        card_height = GameCard.COVER_HEIGHT + GameCard.INFO_HEIGHT
+        row_height = card_height + self.card_grid.spacing()
+        total_rows = (len(self._library_games) + cols - 1) // cols
+
+        bar = self.scroll_area.verticalScrollBar()
+        content_top = self.overview_panel.height() + self.grid_layout.spacing()
+        visible_top = max(0, bar.value() - content_top)
+        visible_bottom = visible_top + self.scroll_area.viewport().height()
+        start_row = max(0, int(visible_top // row_height) - self._virtual_buffer_rows)
+        end_row = min(total_rows, int(visible_bottom // row_height) + self._virtual_buffer_rows + 2)
+        start = start_row * cols
+        end = min(len(self._library_games), end_row * cols)
+
+        if not force and start == self._visible_card_start and end == self._visible_card_end:
+            return
+
+        self._clear_card_grid()
+        self._visible_card_start = start
+        self._visible_card_end = end
+        self.card_top_spacer.setFixedHeight(start_row * row_height)
+        self.card_bottom_spacer.setFixedHeight(max(0, (total_rows - end_row) * row_height))
 
         for i in range(start, end):
             game = self._library_games[i]
@@ -624,21 +660,17 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             card.detail_clicked.connect(self._show_detail)
             card.edit_clicked.connect(self._edit_game)
             card.delete_clicked.connect(self._delete_game)
-            row, col = divmod(i, cols)
+            row, col = divmod(i - start, cols)
             self.card_grid.addWidget(card, row, col)
             self._cards[game.id] = card
-        self._rendered_count = end
 
-        QTimer.singleShot(0, self._maybe_load_more_cards)
+        if end_row < total_rows and bar.maximum() <= 0:
+            QTimer.singleShot(0, lambda: self._render_visible_cards(force=True))
 
     def _maybe_load_more_cards(self, value=None):
         if self._current_category == START_HOME_CATEGORY or self.detail_page.isVisible():
             return
-        if self._rendered_count >= len(self._library_games):
-            return
-        bar = self.scroll_area.verticalScrollBar()
-        if bar.maximum() <= 0 or bar.value() >= bar.maximum() - 900:
-            self._render_next_card_batch()
+        self._render_visible_cards()
 
     def _apply_view_mode(self):
         in_start = self._current_category == START_HOME_CATEGORY and not self.detail_page.isVisible()

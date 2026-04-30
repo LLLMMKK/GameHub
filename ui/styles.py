@@ -849,6 +849,10 @@ QMainWindow {{
     padding: 0px;
 }}
 
+#virtual-card-spacer {{
+    background: transparent;
+}}
+
 #game-card:hover {{
     border-color: {accent};
     background-color: {bg_hover};
@@ -1100,6 +1104,41 @@ QDialog[frameless="true"] {{
     background: transparent;
 }}
 
+#resource-scroll {{
+    background: transparent;
+    border: none;
+}}
+
+#resource-body {{
+    background: transparent;
+}}
+
+#resource-intro {{
+    background-color: {bg_overlay};
+    border: 1px solid {border};
+    border-radius: 10px;
+}}
+
+#resource-title {{
+    color: {text_primary};
+    font-size: 20px;
+    font-weight: bold;
+    background: transparent;
+}}
+
+#resource-section {{
+    background-color: {bg_overlay};
+    border: 1px solid {border};
+    border-radius: 10px;
+}}
+
+#resource-section-title {{
+    color: {text_primary};
+    font-size: 15px;
+    font-weight: bold;
+    background: transparent;
+}}
+
 QSizeGrip {{
     background: transparent;
     width: 14px;
@@ -1332,6 +1371,23 @@ QLabel#section-label {{
     background: transparent;
 }}
 
+#detail-hero #detail-title {{
+    color: #ffffff;
+    font-size: 34px;
+}}
+
+#detail-hero #section-header {{
+    color: rgba(255,255,255,170);
+}}
+
+#detail-meta-card #info-key {{
+    color: rgba(255,255,255,145);
+}}
+
+#detail-meta-card #info-value {{
+    color: rgba(255,255,255,218);
+}}
+
 #detail-r18-tag {{
     color: {private_tag_text};
     background-color: {private_tag_bg};
@@ -1384,17 +1440,32 @@ QLabel#section-label {{
     background-color: {bg_primary};
 }}
 
+#detail-hero {{
+    border-radius: 16px;
+}}
+
 #detail-cover {{
     background-color: {bg_card};
-    border-radius: 8px;
-    border: 1px solid {border};
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,52);
+}}
+
+#detail-action-bar {{
+    background: transparent;
+}}
+
+#detail-meta-card {{
+    min-width: 230px;
+    max-width: 280px;
+    background-color: rgba(0, 0, 0, 90);
+    border: 1px solid rgba(255,255,255,36);
+    border-radius: 12px;
 }}
 
 #desc-card {{
     background-color: {bg_overlay};
     border: 1px solid {border};
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 12px;
 }}
 
 #desc-title {{
@@ -1406,7 +1477,8 @@ QLabel#section-label {{
 }}
 
 #desc-content {{
-    background-color: {bg_primary};
+    background-color: {bg_card};
+    border-radius: 8px;
     border: none;
     color: {text_detail_value};
     font-size: 14px;
