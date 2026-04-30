@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QFrame, QFileDialog, QMessageBox, QComboBox, QDialog,
     QGraphicsOpacityEffect, QApplication, QMenu
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtSignal
 from PyQt6.QtGui import QShortcut, QKeySequence, QFont
 
 from core.game_model import GameDataStore, Game
@@ -32,6 +32,44 @@ START_HOME_CATEGORY = "启动页"
 ALL_CATEGORY = "全部"
 RECENT_CATEGORY = "最近游玩"
 OTHER_CATEGORY = "其他"
+
+
+class StartAddedCard(QWidget):
+    clicked = pyqtSignal(str)
+
+    def __init__(self, game: Game, initial: str, parent=None):
+        super().__init__(parent)
+        self._game_id = game.id
+        self.setObjectName("start-added-card")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(8)
+
+        initial_label = QLabel(initial)
+        initial_label.setObjectName("start-added-initial")
+        initial_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        initial_label.setFixedSize(42, 42)
+        layout.addWidget(initial_label)
+
+        title = QLabel(game.name)
+        title.setObjectName("start-added-title")
+        title.setToolTip(game.name)
+        title.setWordWrap(True)
+        title.setFixedHeight(36)
+        layout.addWidget(title)
+
+        meta = QLabel(game.category if game.category != OTHER_CATEGORY else "未分类")
+        meta.setObjectName("start-game-meta")
+        layout.addWidget(meta)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self._game_id)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
 
 class MainWindow(FramelessResizeMixin, QMainWindow):
@@ -705,31 +743,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         return row
 
     def _create_home_added_card(self, game: Game) -> QWidget:
-        card = QWidget()
-        card.setObjectName("start-added-card")
-        card.setCursor(Qt.CursorShape.PointingHandCursor)
-        card.mousePressEvent = lambda event, game_id=game.id: self._show_detail(game_id)
-
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(8)
-
-        initial = QLabel(self._game_initial(game.name))
-        initial.setObjectName("start-added-initial")
-        initial.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        initial.setFixedSize(42, 42)
-        layout.addWidget(initial)
-
-        title = QLabel(game.name)
-        title.setObjectName("start-added-title")
-        title.setToolTip(game.name)
-        title.setWordWrap(True)
-        title.setFixedHeight(36)
-        layout.addWidget(title)
-
-        meta = QLabel(game.category if game.category != OTHER_CATEGORY else "未分类")
-        meta.setObjectName("start-game-meta")
-        layout.addWidget(meta)
+        card = StartAddedCard(game, self._game_initial(game.name), self)
+        card.clicked.connect(self._show_detail)
         return card
 
     def _game_initial(self, name: str) -> str:

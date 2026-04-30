@@ -346,10 +346,7 @@ class GameDetailPage(QWidget):
         if self.game:
             self.game.cover_path = path
             self.cover_changed.emit(path)
-            pixmap = QPixmap(path)
-            if not pixmap.isNull():
-                scaled = fit_cover_pixmap(pixmap, 315, 420)
-                self.cover_label.setPixmap(scaled)
+            self._update_ui()
 
     def _on_desc_selected(self, text: str):
         if self.game:

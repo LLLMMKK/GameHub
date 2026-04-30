@@ -295,6 +295,14 @@ for _theme_colors in _COLORS.values():
     _theme_colors.setdefault("play_pressed", _theme_colors["green_pressed"])
     _theme_colors.setdefault("play_text", _theme_colors["text_on_accent"])
     _theme_colors.setdefault("play_border", _theme_colors["green_border"])
+    _theme_colors.setdefault("private_tag_text", _theme_colors["red"])
+    _theme_colors.setdefault("private_tag_bg", "rgba(192,57,43,28)")
+    _theme_colors.setdefault("private_tag_border", _theme_colors["red_dark"])
+    _theme_colors.setdefault("completed_text", "#f0d47a")
+    _theme_colors.setdefault("completed_bg", "rgba(216,184,90,32)")
+    _theme_colors.setdefault("completed_border", "#d8b85a")
+    _theme_colors.setdefault("completed_border_hover", "#f0d47a")
+    _theme_colors.setdefault("completed_tag_border", "rgba(216,184,90,150)")
 
 # ═══════════════════════════════════════════════════
 # QSS 模板
@@ -857,16 +865,16 @@ QMainWindow {{
 }}
 
 #game-card[completed="true"] {{
-    border-color: #d8b85a;
+    border-color: {completed_border};
 }}
 
 #game-card[completed="true"]:hover {{
-    border-color: #f0d47a;
+    border-color: {completed_border_hover};
 }}
 
 #card-completed-border {{
     background: transparent;
-    border: 2px solid #d8b85a;
+    border: 2px solid {completed_border};
     border-radius: 8px;
 }}
 
@@ -915,9 +923,9 @@ QMainWindow {{
 }}
 
 #card-r18-tag {{
-    color: #ff4444;
-    background-color: #2a0a0a;
-    border: 1px solid #ff4444;
+    color: {private_tag_text};
+    background-color: {private_tag_bg};
+    border: 1px solid {private_tag_border};
     border-radius: 3px;
     padding: 1px 5px;
     font-size: 9px;
@@ -925,9 +933,9 @@ QMainWindow {{
 }}
 
 #card-completed-tag {{
-    color: #f0d47a;
-    background-color: rgba(216,184,90,32);
-    border: 1px solid rgba(216,184,90,150);
+    color: {completed_text};
+    background-color: {completed_bg};
+    border: 1px solid {completed_tag_border};
     border-radius: 3px;
     padding: 1px 6px;
     font-size: 10px;
@@ -1325,9 +1333,9 @@ QLabel#section-label {{
 }}
 
 #detail-r18-tag {{
-    color: #ff4444;
-    background-color: #2a0a0a;
-    border: 1px solid #ff4444;
+    color: {private_tag_text};
+    background-color: {private_tag_bg};
+    border: 1px solid {private_tag_border};
     border-radius: 4px;
     padding: 2px 10px;
     font-size: 12px;
@@ -1362,11 +1370,11 @@ QLabel#section-label {{
 }}
 
 #detail-completed-tag {{
-    color: #f0d47a;
+    color: {completed_text};
     font-size: 12px;
     font-weight: bold;
-    background-color: rgba(216,184,90,32);
-    border: 1px solid rgba(216,184,90,150);
+    background-color: {completed_bg};
+    border: 1px solid {completed_tag_border};
     border-radius: 4px;
     padding: 2px 10px;
 }}

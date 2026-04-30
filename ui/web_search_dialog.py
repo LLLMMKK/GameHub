@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QPixmap
 
+from ui.game_card import fit_cover_pixmap
 from utils.file_utils import save_cover
 
 class ImageDownloader(QThread):
@@ -260,9 +261,7 @@ class WebSearchDialog(QDialog):
         self._cached_url = source_url
 
         if preview_only:
-            scaled = pixmap.scaled(160, 210, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                   Qt.TransformationMode.SmoothTransformation)
-            self.cover_preview.setPixmap(scaled)
+            self.cover_preview.setPixmap(fit_cover_pixmap(pixmap, 160, 210))
             self.cover_preview.show()
             self._status_label.setText("预览加载成功，点击「选为封面」裁剪并确认")
         else:
