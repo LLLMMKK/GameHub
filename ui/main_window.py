@@ -121,6 +121,14 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
                 return last
         return START_HOME_CATEGORY
 
+    def _resolve_library_entry_category(self) -> str:
+        category = getattr(self.store, "library_entry_category", "last")
+        if category == "last":
+            category = getattr(self.store, "last_category", ALL_CATEGORY)
+        if category == START_HOME_CATEGORY or category not in self.store.categories:
+            return ALL_CATEGORY
+        return category
+
     @property
     def _default_category(self) -> str:
         protected = {START_HOME_CATEGORY, ALL_CATEGORY, RECENT_CATEGORY}
@@ -698,11 +706,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         if self.detail_page.isVisible():
             self.detail_page.hide()
             self._selected_game_id = None
-        last = getattr(self.store, "last_category", ALL_CATEGORY)
-        if last == START_HOME_CATEGORY or last not in self.store.categories:
-            last = ALL_CATEGORY
-        self._current_category = last
-        self.store.last_category = last
+        category = self._resolve_library_entry_category()
+        self._current_category = category
+        self.store.last_category = category
         self.store.save_config()
         self._search_query = ""
         self.sidebar.search_box.clear()
@@ -985,6 +991,10 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.store.startup_page = page
         self.store.save_config()
 
+    def _on_library_entry_category_changed(self, category: str):
+        self.store.library_entry_category = category
+        self.store.save_config()
+
     def _toggle_maximize(self):
         if self.isMaximized():
             self.showNormal()
@@ -1067,10 +1077,12 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         dialog.game_dir_changed.connect(self._on_game_dir_changed)
         dialog.theme_changed.connect(self._on_theme_changed)
         dialog.startup_page_changed.connect(self._on_startup_page_changed)
+        dialog.library_entry_category_changed.connect(self._on_library_entry_category_changed)
         dialog.frameless_mode_changed.connect(self._on_frameless_mode_changed)
         # 实时刷新侧边栏（不保存，仅预览）
         dialog.categories_changed.connect(self._preview_categories)
         dialog.exec()
+        self.store.library_entry_category = dialog._library_entry_category
         # 对话框关闭后统一同步分类到 store
         self._sync_categories(dialog._categories)
 
@@ -1091,6 +1103,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         new_cats = [cat for cat in new_cats if cat != START_HOME_CATEGORY]
         removed = [c for c in self.store.categories if c not in new_cats]
         self.store.categories = list(new_cats)
+        if self.store.library_entry_category != "last" and self.store.library_entry_category not in self.store.categories:
+            self.store.library_entry_category = ALL_CATEGORY
         if self._current_category != START_HOME_CATEGORY and self._current_category not in self.store.categories:
             self._current_category = START_HOME_CATEGORY
             self.store.last_category = self._current_category

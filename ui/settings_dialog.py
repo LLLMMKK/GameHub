@@ -20,6 +20,7 @@ class SettingsDialog(QDialog):
     game_dir_changed = pyqtSignal(str)       # 默认游戏库目录变更信号
     theme_changed = pyqtSignal(str)          # 主题变更信号
     startup_page_changed = pyqtSignal(str)   # 启动页变更信号
+    library_entry_category_changed = pyqtSignal(str)  # 进入游戏库默认分类变更信号
     frameless_mode_changed = pyqtSignal(bool)  # 无边框模式变更信号
 
     def __init__(self, store, parent=None):
@@ -30,6 +31,7 @@ class SettingsDialog(QDialog):
         self._default_game_dir = store.default_game_dir
         self._default_theme = store.theme
         self._startup_page = store.startup_page
+        self._library_entry_category = getattr(store, "library_entry_category", "last")
         self._frameless_mode = store.frameless_mode
         self._setup_ui()
 
@@ -153,6 +155,15 @@ class SettingsDialog(QDialog):
         startup_info = QLabel("启动首页提供最近继续和快速操作，适合作为打开应用时的默认页面。")
         startup_info.setObjectName("detail-info")
         form_startup.addRow("", startup_info)
+
+        self.library_entry_combo = QComboBox()
+        self._refresh_library_entry_combo()
+        self.library_entry_combo.currentIndexChanged.connect(self._on_library_entry_category_changed)
+        form_startup.addRow("进入游戏库默认分类:", self.library_entry_combo)
+
+        library_entry_info = QLabel("从启动页进入游戏库时默认打开的分类；选择“上次浏览位置”可沿用最近一次浏览的分类。")
+        library_entry_info.setObjectName("detail-info")
+        form_startup.addRow("", library_entry_info)
 
         layout.addLayout(form_startup)
         layout.addSpacing(8)
@@ -305,6 +316,22 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         return page
 
+    def _refresh_library_entry_combo(self):
+        if not hasattr(self, "library_entry_combo"):
+            return
+        current = self._library_entry_category
+        self.library_entry_combo.blockSignals(True)
+        self.library_entry_combo.clear()
+        self.library_entry_combo.addItem("上次浏览位置", "last")
+        for cat in self._categories:
+            self.library_entry_combo.addItem(cat, cat)
+        idx = self.library_entry_combo.findData(current)
+        if idx < 0:
+            idx = self.library_entry_combo.findData("last")
+            self._library_entry_category = "last"
+        self.library_entry_combo.setCurrentIndex(max(0, idx))
+        self.library_entry_combo.blockSignals(False)
+
     def _refresh_cat_list(self):
         """刷新分类列表"""
         # 清除旧项
@@ -351,6 +378,7 @@ class SettingsDialog(QDialog):
         self._categories.append(name)
         self._new_cat_input.clear()
         self._refresh_cat_list()
+        self._refresh_library_entry_combo()
         self.categories_changed.emit(list(self._categories))
 
     def _remove_category(self, name: str):
@@ -359,6 +387,7 @@ class SettingsDialog(QDialog):
         if name in self._categories:
             self._categories.remove(name)
         self._refresh_cat_list()
+        self._refresh_library_entry_combo()
         self.categories_changed.emit(list(self._categories))
 
     def _on_privacy_toggled(self, checked: bool):
@@ -378,6 +407,12 @@ class SettingsDialog(QDialog):
         if page:
             self._startup_page = page
             self.startup_page_changed.emit(page)
+
+    def _on_library_entry_category_changed(self, index: int):
+        category = self.library_entry_combo.itemData(index)
+        if category:
+            self._library_entry_category = category
+            self.library_entry_category_changed.emit(category)
 
     def _change_game_dir(self):
         start = self.game_dir_input.text() or ""

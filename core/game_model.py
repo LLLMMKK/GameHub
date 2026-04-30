@@ -123,6 +123,7 @@ class GameDataStore:
         self.theme: str = "暗夜"
         self.sort_mode: str = "name"
         self.startup_page: str = "start_home"
+        self.library_entry_category: str = "last"
         self.last_category: str = "启动页"
         self.frameless_mode: bool = False
         self.load_errors: list[str] = []
@@ -145,6 +146,7 @@ class GameDataStore:
                 self.startup_page = config.get("startup_page", "start_home")
                 if self.startup_page == "safe_home":
                     self.startup_page = "start_home"
+                self.library_entry_category = config.get("library_entry_category", "last")
                 self.last_category = config.get("last_category", "启动页")
                 self.frameless_mode = config.get("frameless_mode", False)
             except (json.JSONDecodeError, KeyError, TypeError) as exc:
@@ -182,6 +184,7 @@ class GameDataStore:
             "theme": self.theme,
             "sort_mode": self.sort_mode,
             "startup_page": self.startup_page,
+            "library_entry_category": self.library_entry_category,
             "last_category": self.last_category,
             "frameless_mode": self.frameless_mode,
         }
