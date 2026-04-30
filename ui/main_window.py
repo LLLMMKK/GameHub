@@ -15,7 +15,7 @@ from core.game_launcher import GameLauncher
 from core.play_tracker import PlayTracker
 from core.game_scanner import GameScanner
 from ui.sidebar import Sidebar
-from ui.game_card import GameCard
+from ui.game_grid_view import GameGridView
 from ui.game_detail import GameDetailPage
 from ui.add_game_dialog import AddGameDialog
 from ui.settings_dialog import SettingsDialog
@@ -90,20 +90,9 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._search_query = ""
         self._sort_mode = self.store.sort_mode
         self._selected_game_id = None
-        self._cards: dict[str, "GameCard"] = {}  # game_id -> GameCard 快速查找
         self._library_games: list[Game] = []
-        self._visible_card_start = 0
-        self._visible_card_end = 0
-        self._virtual_buffer_rows = 2
-        self._last_cols = 0  # 上次列数，避免列数不变时重建卡片
 
         self.init_resize_state()
-
-        # 防抖：resize 时延迟刷新卡片，避免拖动卡顿
-        self._resize_timer = QTimer(self)
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.setInterval(50)
-        self._resize_timer.timeout.connect(self._refresh_cards)
 
         self._setup_ui()
         self._connect_signals()
@@ -163,45 +152,31 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.home_page = self._create_start_home()
         content_layout.addWidget(self.home_page, 1)
 
-        # 游戏卡片网格
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.verticalScrollBar().valueChanged.connect(self._maybe_load_more_cards)
-
-        self.grid_container = QWidget()
-        self.grid_layout = QVBoxLayout(self.grid_container)
-        self.grid_layout.setContentsMargins(20, 16, 8, 16)
-        self.grid_layout.setSpacing(16)
-        self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # 游戏库：概览 + QListView 自绘网格
+        self.library_page = QWidget()
+        self.library_page.setObjectName("library-page")
+        library_layout = QVBoxLayout(self.library_page)
+        library_layout.setContentsMargins(20, 16, 8, 16)
+        library_layout.setSpacing(16)
 
         # 库概览
         self.overview_panel = self._create_overview_panel()
-        self.grid_layout.addWidget(self.overview_panel)
+        library_layout.addWidget(self.overview_panel)
 
-        # 卡片网格
-        self.card_top_spacer = QWidget()
-        self.card_top_spacer.setObjectName("virtual-card-spacer")
-        self.card_top_spacer.setFixedHeight(0)
-        self.grid_layout.addWidget(self.card_top_spacer)
-
-        self.card_grid = QGridLayout()
-        self.card_grid.setSpacing(16)
-        self.grid_layout.addLayout(self.card_grid)
-
-        self.card_bottom_spacer = QWidget()
-        self.card_bottom_spacer.setObjectName("virtual-card-spacer")
-        self.card_bottom_spacer.setFixedHeight(0)
-        self.grid_layout.addWidget(self.card_bottom_spacer)
+        self.game_grid = GameGridView()
+        self.game_grid.set_privacy_mode(self.store.privacy_mode)
+        self.game_grid.set_theme(self.store.theme)
+        self.game_grid.detail_clicked.connect(self._show_detail)
+        self.game_grid.edit_clicked.connect(self._edit_game)
+        self.game_grid.delete_clicked.connect(self._delete_game)
+        library_layout.addWidget(self.game_grid, 1)
 
         # 空状态提示
         self.empty_state = self._create_empty_state()
-        self.grid_layout.addWidget(self.empty_state)
+        library_layout.addWidget(self.empty_state, 1)
         self.empty_state.hide()
 
-        self.scroll_area.setWidget(self.grid_container)
-        content_layout.addWidget(self.scroll_area, 1)
+        content_layout.addWidget(self.library_page, 1)
 
         main_layout.addWidget(content, 1)
 
@@ -581,102 +556,28 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self._refresh_cards(force=True)
 
     def _refresh_cards(self, force=False):
-        """刷新游戏卡片。网格只渲染当前视口附近的卡片，避免大库一次性创建 QWidget。"""
+        """刷新游戏卡片模型，绘制和滚动由 QListView/delegate 负责。"""
         if self._current_category == START_HOME_CATEGORY:
             self._refresh_start_home()
             self._apply_view_mode()
             return
 
-        cols = self._calc_columns()
-        if not force and cols == self._last_cols and self._library_games:
-            self._render_visible_cards(force=True)
-            return
-        self._last_cols = cols
-
-        self._clear_card_grid()
-
-        # 获取要显示的游戏
         games = self._get_filtered_games()
         self._library_games = games
-        self._visible_card_start = 0
-        self._visible_card_end = 0
 
         self._update_overview(games)
         self._apply_view_mode()
 
-        # 空状态
-        if not games:
-            self.empty_state.show()
-            return
-
-        self.empty_state.hide()
-
-        self.scroll_area.verticalScrollBar().setValue(0)
-        self._render_visible_cards(force=True)
-
-    def _clear_card_grid(self):
-        self._cards.clear()
-        while self.card_grid.count():
-            item = self.card_grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        if hasattr(self, "card_top_spacer"):
-            self.card_top_spacer.setFixedHeight(0)
-        if hasattr(self, "card_bottom_spacer"):
-            self.card_bottom_spacer.setFixedHeight(0)
-
-    def _render_visible_cards(self, force=False):
-        if not self._library_games:
-            return
-
-        cols = max(1, self._last_cols or self._calc_columns())
-        card_height = GameCard.COVER_HEIGHT + GameCard.INFO_HEIGHT
-        row_height = card_height + self.card_grid.spacing()
-        total_rows = (len(self._library_games) + cols - 1) // cols
-
-        bar = self.scroll_area.verticalScrollBar()
-        content_top = self.overview_panel.height() + self.grid_layout.spacing()
-        visible_top = max(0, bar.value() - content_top)
-        visible_bottom = visible_top + self.scroll_area.viewport().height()
-        start_row = max(0, int(visible_top // row_height) - self._virtual_buffer_rows)
-        end_row = min(total_rows, int(visible_bottom // row_height) + self._virtual_buffer_rows + 2)
-        start = start_row * cols
-        end = min(len(self._library_games), end_row * cols)
-
-        if not force and start == self._visible_card_start and end == self._visible_card_end:
-            return
-
-        self._clear_card_grid()
-        self._visible_card_start = start
-        self._visible_card_end = end
-        self.card_top_spacer.setFixedHeight(start_row * row_height)
-        self.card_bottom_spacer.setFixedHeight(max(0, (total_rows - end_row) * row_height))
-
-        for i in range(start, end):
-            game = self._library_games[i]
-            card = GameCard(game)
-            card.set_privacy_mode(self.store.privacy_mode)
-            card.play_clicked.connect(self._toggle_game)
-            card.detail_clicked.connect(self._show_detail)
-            card.edit_clicked.connect(self._edit_game)
-            card.delete_clicked.connect(self._delete_game)
-            row, col = divmod(i - start, cols)
-            self.card_grid.addWidget(card, row, col)
-            self._cards[game.id] = card
-
-        if end_row < total_rows and bar.maximum() <= 0:
-            QTimer.singleShot(0, lambda: self._render_visible_cards(force=True))
-
-    def _maybe_load_more_cards(self, value=None):
-        if self._current_category == START_HOME_CATEGORY or self.detail_page.isVisible():
-            return
-        self._render_visible_cards()
+        has_games = bool(games)
+        self.empty_state.setVisible(not has_games)
+        self.game_grid.setVisible(has_games)
+        self.game_grid.set_games(games)
 
     def _apply_view_mode(self):
         in_start = self._current_category == START_HOME_CATEGORY and not self.detail_page.isVisible()
         self.sidebar.setVisible(not in_start)
         self.home_page.setVisible(in_start)
-        self.scroll_area.setVisible(not in_start and not self.detail_page.isVisible())
+        self.library_page.setVisible(not in_start and not self.detail_page.isVisible())
 
         for widget in (self.sort_label, self.sort_combo, self.add_btn):
             widget.setVisible(not in_start)
@@ -819,13 +720,6 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.sidebar.search_box.clear()
         self._refresh_cards(force=True)
 
-    def _calc_columns(self):
-        if self.isVisible():
-            viewport_width = self.scroll_area.viewport().width()
-        else:
-            viewport_width = max(800, self.width() - 217)
-        return max(1, (viewport_width - 28) // (GameCard.CARD_WIDTH + 16))
-
     def _get_filtered_games(self) -> list[Game]:
         if self._search_query:
             games = self.store.search_games(self._search_query)
@@ -895,7 +789,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self._selected_game_id = game_id
             self.detail_page.set_game(game, self.launcher.is_running(game_id))
             self.home_page.hide()
-            self.scroll_area.hide()
+            self.library_page.hide()
             self.detail_page.show()
 
     def _close_detail(self):
@@ -936,11 +830,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
             self.detail_page.set_game(game, False)
 
     def _update_card_state(self, game_id: str):
-        card = self._cards.get(game_id)
-        if card:
-            game = self.store.get_game(game_id)
-            if game:
-                card.update_game(game)
+        self.game_grid.refresh_game(game_id)
 
     def _refresh_sidebar_counts(self):
         """仅更新侧边栏计数，不重建按钮"""
@@ -1074,9 +964,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         """切换隐私模式，刷新所有卡片和详情页"""
         self.store.privacy_mode = enabled
         self.store.save_config()
-        # 刷新卡片
-        for card in self._cards.values():
-            card.set_privacy_mode(enabled)
+        self.game_grid.set_privacy_mode(enabled)
         # 刷新详情页
         if self.detail_page.game and self.detail_page.isVisible():
             running = self._selected_game_id and self.launcher.is_running(self._selected_game_id)
@@ -1091,6 +979,7 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
         self.store.theme = theme_name
         self.store.save_config()
         QApplication.instance().setStyleSheet(THEMES.get(theme_name, THEMES["暗夜"]))
+        self.game_grid.set_theme(theme_name)
 
     def _on_startup_page_changed(self, page: str):
         self.store.startup_page = page
@@ -1291,7 +1180,8 @@ class MainWindow(FramelessResizeMixin, QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._resize_timer.start()  # 防抖：停止拖动后才刷新
+        if self._splash_overlay:
+            self._splash_overlay.setGeometry(0, 0, self.width(), self.height())
 
     def closeEvent(self, event):
         self.launcher.shutdown_all()

@@ -761,6 +761,21 @@ QMainWindow {{
     border-radius: 8px;
 }}
 
+#library-page {{
+    background-color: {bg_primary};
+}}
+
+#game-grid-view {{
+    background-color: {bg_primary};
+    border: none;
+    outline: none;
+}}
+
+#game-grid-view::item {{
+    background: transparent;
+    border: none;
+}}
+
 #overview-kicker {{
     color: {accent};
     font-size: 10px;
